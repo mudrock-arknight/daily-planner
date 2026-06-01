@@ -8,6 +8,7 @@ interface TimeBlock {
   detail?: string
   location?: string
   type: string
+  countable?: boolean
 }
 
 interface CompletionRecord {
@@ -479,6 +480,7 @@ export default function WeeklyPlanPage() {
                                       themeColors.purple
                     const past = isTimeBlockPast(block.time, selectedDaySchedule.date)
                     const completed = isBlockCompleted(selectedDay, i)
+                    const isCheckable = block.type === 'study' && block.countable === true
                     
                     return (
                       <div
@@ -492,23 +494,29 @@ export default function WeeklyPlanPage() {
                         } animate-fadeIn`}
                         style={{ animationDelay: `${i * 0.08}s` }}
                       >
-                        <button
-                          onClick={() => handleToggleCompletion(selectedDay, i, block)}
-                          disabled={completingIndex !== null}
-                          className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
-                            completed
-                              ? 'bg-green-500 text-white shadow-lg scale-110'
-                              : past
-                              ? 'bg-gray-200 text-gray-400'
-                              : `${blockTheme.dark} text-white cursor-pointer hover:scale-110`
-                          } ${completingIndex === i ? 'animate-pulse' : ''}`}
-                        >
-                          {completed ? (
-                            <CheckCircle2 size={28} />
-                          ) : (
-                            <Circle size={28} />
-                          )}
-                        </button>
+                        {isCheckable ? (
+                          <button
+                            onClick={() => handleToggleCompletion(selectedDay, i, block)}
+                            disabled={completingIndex !== null}
+                            className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+                              completed
+                                ? 'bg-green-500 text-white shadow-lg scale-110'
+                                : past
+                                ? 'bg-gray-200 text-gray-400'
+                                : `${blockTheme.dark} text-white cursor-pointer hover:scale-110`
+                            } ${completingIndex === i ? 'animate-pulse' : ''}`}
+                          >
+                            {completed ? (
+                              <CheckCircle2 size={28} />
+                            ) : (
+                              <Circle size={28} />
+                            )}
+                          </button>
+                        ) : (
+                          <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 bg-gray-100">
+                            <Circle size={28} className="text-gray-300" />
+                          </div>
+                        )}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3 mb-2">
                             <span className={`text-lg font-bold ${blockTheme.text}`}>{block.time}</span>

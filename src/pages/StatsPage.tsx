@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { BarChart3, TrendingUp, Target, AlertCircle, Calendar, BookOpen, Flame, CheckCircle2, PieChart } from 'lucide-react'
+import { BarChart3, TrendingUp, Target, AlertCircle, Calendar, BookOpen, Flame, CheckCircle2, PieChart, Sparkles } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 interface DailyData {
@@ -21,7 +21,17 @@ interface CompletionRecord {
   planDate: string
   timeblockIndex: number
   timeblockType: string
+  timeblockContent?: string
   completed: boolean
+}
+
+interface LongTermGoal {
+  id: string
+  text: string
+  category: string
+  keywords?: string[]
+  progress: number
+  totalHours?: number
 }
 
 export default function StatsPage() {
@@ -38,6 +48,7 @@ export default function StatsPage() {
   const [weeklyCompletionRate, setWeeklyCompletionRate] = useState(0)
   const [typeCompletionRates, setTypeCompletionRates] = useState<Record<string, { completed: number; total: number }>>({})
   const [dailyCompletionRates, setDailyCompletionRates] = useState<{ date: string; rate: number }[]>([])
+  const [longTermGoals, setLongTermGoals] = useState<LongTermGoal[]>([])
 
   useEffect(() => {
     loadStats()
@@ -50,21 +61,29 @@ export default function StatsPage() {
         .from('daily_checkins')
         .select('*')
         .order('date', { ascending: false })
+        .limit(1000)
 
       const { data: planData } = await supabase
         .from('weekly_plans')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(1)
+        .limit(1000)
 
       if (planData && planData.length > 0) {
         setWeeklyPlan(planData[0])
         if (planData[0].data?.goals) {
           setGoals(planData[0].data.goals)
         }
+        if (planData[0].data?.longTermGoals) {
+          setLongTermGoals(planData[0].data.longTermGoals)
+        }
       }
 
+      // 收集所有学习类型且可统计的完成记录
       const allCompletions: CompletionRecord[] = []
+      // 收集所有学习时间块（用于长期目标统计）
+      const studyBlocksWithContent: { content: string; planDate: string }[] = []
+      
       if (checkinData && checkinData.length > 0) {
         let totalHours = 0
         checkinData.forEach(checkin => {
@@ -72,17 +91,60 @@ export default function StatsPage() {
             totalHours += checkin.data.studyHours
           }
           if (checkin.data?.completions) {
-            checkin.data.completions.forEach((comp: CompletionRecord) => {
-              allCompletions.push({
-                planDate: checkin.date,
-                timeblockIndex: comp.timeblockIndex,
-                timeblockType: comp.timeblockType || 'study',
-                completed: comp.completed,
-              })
+            checkin.data.completions.forEach((comp: any) => {
+              // 只添加学习类型且可统计的时间块（或者如果无法判断countable，默认学习类型都统计）
+              // 从weekly plan中获取对应时间块的countable属性
+              let isStudyAndCountable = comp.timeblockType === 'study'
+              
+              // 如果有weekly plan，尝试从daily schedule中获取该时间块的详细信息
+              if (planData && planData.length > 0 && planData[0].data?.dailySchedule) {
+                const dailySchedule = planData[0].data.dailySchedule
+                // 找到对应的日期和时间块
+                for (const dayName of Object.keys(dailySchedule)) {
+                  const daySchedule = dailySchedule[dayName]
+                  if (daySchedule.date === checkin.date && daySchedule.timeBlocks) {
+                    const block = daySchedule.timeBlocks[comp.timeblockIndex]
+                    if (block) {
+                      isStudyAndCountable = block.type === 'study' && block.countable !== false
+                      // 收集学习内容用于长期目标统计
+                      if (block.type === 'study' && comp.completed) {
+                        studyBlocksWithContent.push({
+                          content: block.content || comp.timeblockContent || '',
+                          planDate: checkin.date
+                        })
+                      }
+                      break
+                    }
+                  }
+                }
+              } else if (comp.timeblockType === 'study') {
+                // 如果没有weekly plan，默认学习类型都算
+                isStudyAndCountable = true
+                if (comp.completed && comp.timeblockContent) {
+                  studyBlocksWithContent.push({
+                    content: comp.timeblockContent,
+                    planDate: checkin.date
+                  })
+                }
+              }
+              
+              if (isStudyAndCountable) {
+                allCompletions.push({
+                  planDate: checkin.date,
+                  timeblockIndex: comp.timeblockIndex,
+                  timeblockType: comp.timeblockType || 'study',
+                  timeblockContent: comp.timeblockContent,
+                  completed: comp.completed,
+                })
+              }
             })
           }
         })
         setCompletions(allCompletions)
+
+        // 计算长期目标时间统计
+        const goalsWithHours = calculateLongTermGoalHours(studyBlocksWithContent, planData?.[0]?.data?.longTermGoals || [])
+        setLongTermGoals(goalsWithHours)
 
         const streak = calculateStreak(checkinData.map(d => d.date))
         const days = checkinData.length
@@ -151,6 +213,32 @@ export default function StatsPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  function calculateLongTermGoalHours(studyBlocks: { content: string; planDate: string }[], goals: any[]): LongTermGoal[] {
+    return goals.map(goal => {
+      // 从目标文本中提取关键词（或者使用预设的keywords字段）
+      const keywords = goal.keywords || [goal.text.split(/[,，\s]+/)[0]] // 默认取第一个词作为关键词
+      
+      let matchCount = 0
+      studyBlocks.forEach(block => {
+        const content = block.content.toLowerCase()
+        const hasMatch = keywords.some((keyword: string) => 
+          content.includes(keyword.toLowerCase())
+        )
+        if (hasMatch) {
+          matchCount++
+        }
+      })
+      
+      // 假设每个学习时间块平均1小时（简化处理）
+      const totalHours = matchCount * 1
+      
+      return {
+        ...goal,
+        totalHours: totalHours
+      }
+    })
   }
 
   function calculateStreak(dates: string[]): number {
@@ -430,61 +518,137 @@ export default function StatsPage() {
               </div>
             </div>
 
-            {goals.length > 0 && (
-              <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 mb-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <Target className="text-rose-500" size={20} />
-                  <h3 className="font-semibold text-gray-800">目标进度</h3>
+        {goals.length > 0 && (
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Target className="text-rose-500" size={20} />
+              <h3 className="font-semibold text-gray-800">目标进度</h3>
+            </div>
+            <div className="space-y-4">
+              {goals.slice(0, 5).map((goal, i) => (
+                <div key={i}>
+                  <div className="flex justify-between text-sm mb-1.5">
+                    <span className="text-gray-600 flex items-center gap-2">
+                      {goal.type === 'exam' && <span className="w-2 h-2 bg-red-400 rounded-full"></span>}
+                      {goal.type === 'study' && <span className="w-2 h-2 bg-green-400 rounded-full"></span>}
+                      {goal.text}
+                    </span>
+                    <span className={`font-medium ${
+                      goal.type === 'exam' ? 'text-red-600' :
+                      goal.type === 'study' ? 'text-green-600' : 'text-blue-600'
+                    }`}>{goal.progress}%</span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all ${
+                        goal.type === 'exam' ? 'bg-gradient-to-r from-red-400 to-rose-500' :
+                        goal.type === 'study' ? 'bg-gradient-to-r from-green-400 to-emerald-500' :
+                        'bg-gradient-to-r from-blue-400 to-indigo-500'
+                      }`}
+                      style={{ width: `${goal.progress}%` }}
+                    />
+                  </div>
+                  {goal.deadline && (
+                    <div className="text-xs text-gray-400 mt-1">截止: {goal.deadline}</div>
+                  )}
                 </div>
-                <div className="space-y-4">
-                  {goals.slice(0, 5).map((goal, i) => (
-                    <div key={i}>
-                      <div className="flex justify-between text-sm mb-1.5">
-                        <span className="text-gray-600 flex items-center gap-2">
-                          {goal.type === 'exam' && <span className="w-2 h-2 bg-red-400 rounded-full"></span>}
-                          {goal.type === 'study' && <span className="w-2 h-2 bg-green-400 rounded-full"></span>}
-                          {goal.text}
-                        </span>
-                        <span className={`font-medium ${
-                          goal.type === 'exam' ? 'text-red-600' : 
-                          goal.type === 'study' ? 'text-green-600' : 'text-blue-600'
-                        }`}>{goal.progress}%</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {longTermGoals.length > 0 && (
+          <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-5 shadow-sm border border-indigo-100 mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles className="text-indigo-600" size={20} />
+              <h3 className="font-semibold text-gray-800">长期目标时间统计</h3>
+            </div>
+            <div className="space-y-3">
+              {longTermGoals.map((goal) => {
+                const categoryColors: Record<string, string> = {
+                  language: 'from-blue-400 to-indigo-500',
+                  tech: 'from-green-400 to-emerald-500',
+                  finance: 'from-amber-400 to-orange-500',
+                  skill: 'from-purple-400 to-pink-500',
+                  hobby: 'from-rose-400 to-red-500'
+                }
+                const categoryBg: Record<string, string> = {
+                  language: 'bg-blue-50',
+                  tech: 'bg-green-50',
+                  finance: 'bg-amber-50',
+                  skill: 'bg-purple-50',
+                  hobby: 'bg-rose-50'
+                }
+                const categoryText: Record<string, string> = {
+                  language: 'text-blue-600',
+                  tech: 'text-green-600',
+                  finance: 'text-amber-600',
+                  skill: 'text-purple-600',
+                  hobby: 'text-rose-600'
+                }
+                const categoryNames: Record<string, string> = {
+                  language: '语言',
+                  tech: '技术',
+                  finance: '金融',
+                  skill: '技能',
+                  hobby: '爱好'
+                }
+                
+                return (
+                  <div 
+                    key={goal.id} 
+                    className={`p-4 rounded-xl ${categoryBg[goal.category] || 'bg-gray-50'} border border-transparent transition-all duration-300`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className={`w-2 h-8 rounded-full bg-gradient-to-b ${categoryColors[goal.category] || 'bg-gray-400'}`}></span>
+                        <span className="font-medium text-gray-700">{goal.text}</span>
                       </div>
-                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="flex items-center gap-3">
+                        <span className={`text-xs px-2 py-1 rounded-full ${categoryBg[goal.category] || 'bg-gray-100'} ${categoryText[goal.category] || 'text-gray-600'}`}>
+                          {categoryNames[goal.category] || '其他'}
+                        </span>
+                        <div className="text-right">
+                          <div className="text-lg font-bold text-gray-800">{goal.totalHours?.toFixed(1) || 0}h</div>
+                          <div className="text-xs text-gray-500">已投入</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-2">
+                      <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                        <span>进度</span>
+                        <span>{goal.progress}%</span>
+                      </div>
+                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                         <div 
-                          className={`h-full rounded-full transition-all ${
-                            goal.type === 'exam' ? 'bg-gradient-to-r from-red-400 to-rose-500' :
-                            goal.type === 'study' ? 'bg-gradient-to-r from-green-400 to-emerald-500' :
-                            'bg-gradient-to-r from-blue-400 to-indigo-500'
-                          }`}
+                          className={`h-full rounded-full bg-gradient-to-r ${categoryColors[goal.category] || 'bg-gray-400'}`}
                           style={{ width: `${goal.progress}%` }}
                         />
                       </div>
-                      {goal.deadline && (
-                        <div className="text-xs text-gray-400 mt-1">截止: {goal.deadline}</div>
-                      )}
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {totalCheckinDays === 0 && completions.length === 0 && (
-              <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl p-6 border border-yellow-200">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-yellow-100 rounded-2xl flex items-center justify-center">
-                    <AlertCircle className="text-yellow-600" size={28} />
                   </div>
-                  <div>
-                    <p className="text-yellow-800 font-semibold text-lg">开始你的学习记录</p>
-                    <p className="text-sm text-yellow-600 mt-1">去打卡页面记录每天的学习，让数据告诉你进步了多少！</p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
+                )
+              })}
+            </div>
+          </div>
         )}
-      </div>
-    </div>
-  )
+
+        {totalCheckinDays === 0 && completions.length === 0 && (
+          <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl p-6 border border-yellow-200">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-yellow-100 rounded-2xl flex items-center justify-center">
+                <AlertCircle className="text-yellow-600" size={28} />
+              </div>
+              <div>
+                <p className="text-yellow-800 font-semibold text-lg">开始你的学习记录</p>
+                <p className="text-sm text-yellow-600 mt-1">去打卡页面记录每天的学习，让数据告诉你进步了多少！</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
+    )}
+  </div>
+</div>
+)
 }

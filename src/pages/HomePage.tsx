@@ -9,6 +9,7 @@ interface TimeBlock {
   detail?: string;
   location?: string;
   type: string;
+  countable?: boolean;
   completed?: boolean;
   completedAt?: string;
 }
@@ -400,6 +401,7 @@ export default function HomePage() {
                                     block.type === 'exam' ? themeColors.red :
                                     block.type === 'break' ? themeColors.orange :
                                     themeColors.purple;
+                const isCheckable = block.type === 'study' && block.countable === true;
                 
                 return (
                   <div 
@@ -413,23 +415,29 @@ export default function HomePage() {
                     } animate-fadeIn`}
                     style={{ animationDelay: `${i * 0.05}s` }}
                   >
-                    <button
-                      onClick={() => handleToggleCompletion(i, block)}
-                      disabled={completingIndex !== null}
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
-                        completed
-                          ? 'bg-green-500 text-white shadow-lg scale-110'
-                          : past
-                          ? 'bg-gray-200 text-gray-400'
-                          : `${blockTheme.dark} text-white cursor-pointer hover:scale-110`
-                      } ${completingIndex === i ? 'animate-pulse' : ''}`}
-                    >
-                      {completed ? (
-                        <CheckCircle2 size={22} />
-                      ) : (
-                        <Circle size={22} />
-                      )}
-                    </button>
+                    {isCheckable ? (
+                      <button
+                        onClick={() => handleToggleCompletion(i, block)}
+                        disabled={completingIndex !== null}
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+                          completed
+                            ? 'bg-green-500 text-white shadow-lg scale-110'
+                            : past
+                            ? 'bg-gray-200 text-gray-400'
+                            : `${blockTheme.dark} text-white cursor-pointer hover:scale-110`
+                        } ${completingIndex === i ? 'animate-pulse' : ''}`}
+                      >
+                        {completed ? (
+                          <CheckCircle2 size={22} />
+                        ) : (
+                          <Circle size={22} />
+                        )}
+                      </button>
+                    ) : (
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-gray-100">
+                        <Circle size={22} className="text-gray-300" />
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className={`text-sm font-semibold ${blockTheme.text}`}>{block.time}</span>
