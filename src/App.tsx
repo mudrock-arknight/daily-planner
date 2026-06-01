@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom'
-import { Home, CheckCircle2, ListTodo, Calendar, BarChart3 } from 'lucide-react'
+import { Home, CheckCircle2, ListTodo, BarChart3, Target } from 'lucide-react'
 import HomePage from './pages/HomePage'
 import CheckinPage from './pages/CheckinPage'
 import TodoPage from './pages/TodoPage'
@@ -11,10 +11,10 @@ function Navbar() {
   const location = useLocation()
   
   const navItems = [
-    { path: '/', icon: Home, label: '首页' },
+    { path: '/', icon: Home, label: '计划' },
     { path: '/checkin', icon: CheckCircle2, label: '打卡' },
     { path: '/todo', icon: ListTodo, label: '待办' },
-    { path: '/schedule', icon: Calendar, label: '课表' },
+    { path: '/weekly', icon: Target, label: '周计划' },
     { path: '/stats', icon: BarChart3, label: '统计' },
   ]
   

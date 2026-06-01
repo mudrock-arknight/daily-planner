@@ -1,1 +1,0 @@
-{"root":["./src/app.tsx","./src/main.tsx","./src/lib/supabase.ts","./src/pages/checkinpage.tsx","./src/pages/homepage.tsx","./src/pages/schedulepage.tsx","./src/pages/statspage.tsx","./src/pages/todopage.tsx","./src/pages/weeklyplanpage.tsx","./src/store/usestore.ts","./src/types/index.ts"],"version":"5.9.3"}

@@ -6,7 +6,6 @@ import type { TodoItem } from '../types'
 
 export default function TodoPage() {
   const [newTodo, setNewTodo] = useState('')
-  const [priority, setPriority] = useState<'high' | 'medium' | 'low'>('medium')
   const { todos, setTodos, addTodo, updateTodo, deleteTodo } = useStore()
 
   useEffect(() => {
@@ -38,15 +37,14 @@ export default function TodoPage() {
     e.preventDefault()
     if (!newTodo.trim()) return
 
-    const todo: Omit<TodoItem, 'id' | 'created_at'> = {
+    const todo: Omit<TodoItem, 'id' | 'created_at' | 'priority'> = {
       title: newTodo,
-      priority,
       completed: false,
     }
 
     const { data } = await supabase
       .from('todo_items')
-      .insert(todo)
+      .insert({ ...todo, priority: 'medium' })
       .select()
       .single()
 
@@ -70,21 +68,12 @@ export default function TodoPage() {
     deleteTodo(id)
   }
 
-  const getPriorityColor = (p: string) => {
-    switch (p) {
-      case 'high': return 'border-l-red-500'
-      case 'medium': return 'border-l-yellow-500'
-      case 'low': return 'border-l-green-500'
-      default: return 'border-l-gray-500'
-    }
-  }
-
   return (
     <div className="p-4 max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold text-gray-800 mb-6">待办事项</h1>
 
       <form onSubmit={handleAddTodo} className="mb-6">
-        <div className="flex gap-3 mb-3">
+        <div className="flex gap-3">
           <input
             type="text"
             value={newTodo}
@@ -100,31 +89,13 @@ export default function TodoPage() {
             添加
           </button>
         </div>
-        <div className="flex gap-2">
-          {(['high', 'medium', 'low'] as const).map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => setPriority(p)}
-              className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
-                priority === p
-                  ? p === 'high' ? 'bg-red-100 text-red-700'
-                  : p === 'medium' ? 'bg-yellow-100 text-yellow-700'
-                  : 'bg-green-100 text-green-700'
-                  : 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              {p === 'high' ? '高优先级' : p === 'medium' ? '中优先级' : '低优先级'}
-            </button>
-          ))}
-        </div>
       </form>
 
       <div className="space-y-3">
         {todos.map((todo) => (
           <div
             key={todo.id}
-            className={`bg-white rounded-xl p-4 shadow-sm border-l-4 ${getPriorityColor(todo.priority)} flex items-center gap-3`}
+            className="bg-white rounded-xl p-4 shadow-sm flex items-center gap-3"
           >
             <button
               onClick={() => toggleTodo(todo.id!, todo.completed)}

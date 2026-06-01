@@ -1,64 +1,219 @@
-import { Link } from 'react-router-dom'
-import { CheckCircle2, ListTodo, Calendar, BarChart3, TrendingUp, Clock, Target } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Calendar, Clock, Target, CheckCircle2, AlertCircle, Circle } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import { useStore } from '../store/useStore'
 
 export default function HomePage() {
-  const today = new Date()
-  const dateStr = today.toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    weekday: 'long'
-  })
+  const [currentTimeBlock, setCurrentTimeBlock] = useState<string>('')
+  const [currentTask, setCurrentTask] = useState<string>('')
+  const [todaysSchedule, setTodaysSchedule] = useState<any>(null)
+  const [weeklyPlan, setWeeklyPlan] = useState<any>(null)
+  const { todos } = useStore()
 
-  const quickActions = [
-    { path: '/checkin', icon: CheckCircle2, label: '每日打卡', color: 'bg-blue-500', desc: '记录今天的状态' },
-    { path: '/todo', icon: ListTodo, label: '待办事项', color: 'bg-orange-500', desc: '管理今天的任务' },
-    { path: '/schedule', icon: Calendar, label: '查看课表', color: 'bg-green-500', desc: '看看今天的课程' },
-    { path: '/weekly', icon: Target, label: '周计划', color: 'bg-purple-500', desc: '制定本周目标' },
-    { path: '/stats', icon: BarChart3, label: '数据统计', color: 'bg-pink-500', desc: '查看你的进度' },
-  ]
+  const today = new Date()
+  const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+  const todayName = dayNames[today.getDay()]
+  const formattedDate = `${today.getMonth() + 1}月${today.getDate()}日`
+
+  useEffect(() => {
+    loadWeeklyPlan()
+    updateCurrentTask()
+    
+    const interval = setInterval(updateCurrentTask, 60000)
+    return () => clearInterval(interval)
+  }, [weeklyPlan])
+
+  async function loadWeeklyPlan() {
+    const { data } = await supabase
+      .from('weekly_plans')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(1)
+    
+    if (data && data.length > 0) {
+      setWeeklyPlan(data[0])
+      if (data[0].data && data[0].data.dailySchedule) {
+        setTodaysSchedule(data[0].data.dailySchedule[todayName])
+      }
+    }
+  }
+
+  function updateCurrentTask() {
+    const now = new Date()
+    const hours = now.getHours()
+    const minutes = now.getMinutes()
+    const totalMinutes = hours * 60 + minutes
+
+    let timeBlock = ''
+    let task = ''
+
+    if (totalMinutes < 510) { // 0-8:30
+      timeBlock = '早晨'
+      task = '准备起床，开始新的一天'
+    } else if (totalMinutes < 600) { // 8:30-10:00
+      timeBlock = '上午学习时间'
+      task = todaysSchedule?.classes?.[0] || '进行晨间学习'
+    } else if (totalMinutes < 720) { // 10:00-12:00
+      timeBlock = '上午第二时段'
+      task = todaysSchedule?.classes?.[1] || '继续学习或上课'
+    } else if (totalMinutes < 840) { // 12:00-14:00
+      timeBlock = '午休时间'
+      task = '吃午饭，适当休息'
+    } else if (totalMinutes < 990) { // 14:00-16:30
+      timeBlock = '下午学习时间'
+      task = todaysSchedule?.classes?.[2] || '专注学习中'
+    } else if (totalMinutes < 1110) { // 16:30-18:30
+      timeBlock = '傍晚'
+      task = '休息一下，准备晚饭'
+    } else if (totalMinutes < 1260) { // 18:30-21:00
+      timeBlock = '晚间学习时间'
+      task = todaysSchedule?.tasks?.[0] || '晚间学习时间'
+    } else if (totalMinutes < 1320) { // 21:00-22:00
+      timeBlock = '睡前准备'
+      task = '整理一天，准备休息'
+    } else { // 22:00以后
+      timeBlock = '睡眠时间'
+      task = '该睡觉了，保持良好作息'
+    }
+
+    setCurrentTimeBlock(timeBlock)
+    setCurrentTask(task)
+  }
+
+  const incompleteTodos = todos.filter(t => !t.completed).slice(0, 3)
 
   return (
     <div className="p-4 max-w-2xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">你好！ 👋</h1>
-        <p className="text-gray-500">{dateStr}</p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 mb-8">
-        {quickActions.map((action) => (
-          <Link
-            key={action.path}
-            to={action.path}
-            className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-all"
-          >
-            <div className={`${action.color} w-12 h-12 rounded-xl flex items-center justify-center mb-3`}>
-              <action.icon className="text-white" size={24} />
-            </div>
-            <h3 className="font-semibold text-gray-800">{action.label}</h3>
-            <p className="text-sm text-gray-500 mt-1">{action.desc}</p>
-          </Link>
-        ))}
-      </div>
-
-      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center">
-            <TrendingUp className="text-blue-600" size={20} />
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 text-white mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <div className="text-blue-100 text-sm mb-1">{todayName}</div>
+            <div className="text-3xl font-bold">{formattedDate}</div>
           </div>
-          <h2 className="font-semibold text-gray-800">今日状态</h2>
+          <Calendar size={48} className="text-blue-200" />
         </div>
-        <div className="text-center py-8 text-gray-500">
-          <Clock size={48} className="mx-auto mb-3 text-gray-300" />
-          <p>开始今天的打卡吧！</p>
-          <Link
-            to="/checkin"
-            className="inline-block mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-          >
-            立即打卡
-          </Link>
+        
+        <div className="bg-white/20 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Clock className="text-yellow-300" size={20} />
+            <span className="text-blue-100 text-sm">当前时段</span>
+          </div>
+          <div className="text-xl font-semibold mb-1">{currentTimeBlock}</div>
+          <div className="text-blue-100">{currentTask}</div>
         </div>
       </div>
+
+      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 mb-6">
+        <h2 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <Target className="text-green-500" size={20} />
+          今日任务
+        </h2>
+        
+        {todaysSchedule ? (
+          <div className="space-y-4">
+            {todaysSchedule.classes && todaysSchedule.classes.length > 0 && (
+              <div>
+                <div className="text-sm text-gray-500 mb-2">📚 今日课程</div>
+                <div className="space-y-2">
+                  {todaysSchedule.classes.map((cls: string, i: number) => (
+                    <div key={i} className="flex items-center gap-2 text-gray-700">
+                      <span className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-medium">
+                        {i + 1}
+                      </span>
+                      {cls}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {todaysSchedule.tasks && todaysSchedule.tasks.length > 0 && (
+              <div>
+                <div className="text-sm text-gray-500 mb-2">✅ 今日待办</div>
+                <div className="space-y-2">
+                  {todaysSchedule.tasks.map((task: string, i: number) => (
+                    <div key={i} className="flex items-center gap-2 text-gray-700">
+                      <CheckCircle2 className="text-gray-300" size={18} />
+                      {task}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {todaysSchedule.focusTime && (
+              <div className="bg-yellow-50 rounded-lg p-3">
+                <div className="text-sm text-yellow-700 font-medium">⏰ 专注时间段</div>
+                <div className="text-yellow-600 text-sm">{todaysSchedule.focusTime}</div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            <AlertCircle size={40} className="mx-auto mb-2 opacity-50" />
+            <p>暂无今日计划</p>
+            <p className="text-sm">可以添加周计划来生成每日安排</p>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold text-gray-800 flex items-center gap-2">
+            <CheckCircle2 className="text-blue-500" size={20} />
+            待办事项
+          </h2>
+          <span className="text-sm text-gray-500">{incompleteTodos.length} 项待完成</span>
+        </div>
+        
+        {incompleteTodos.length > 0 ? (
+          <div className="space-y-3">
+            {incompleteTodos.map((todo) => (
+              <div key={todo.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                <Circle className="text-gray-300" size={20} />
+                <span className="flex-1 text-gray-700">{todo.title}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-6 text-gray-500">
+            <p>暂无待办事项</p>
+          </div>
+        )}
+      </div>
+
+      {weeklyPlan?.data?.goals && (
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
+          <h2 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <Target className="text-purple-500" size={20} />
+            本周目标
+          </h2>
+          <div className="space-y-3">
+            {weeklyPlan.data.goals.slice(0, 4).map((goal: any) => (
+              <div key={goal.id} className="flex items-center gap-3">
+                <div className="flex-1">
+                  <div className="text-gray-700">{goal.text}</div>
+                  {goal.progress !== undefined && (
+                    <div className="mt-1">
+                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-purple-500 rounded-full transition-all"
+                          style={{ width: `${goal.progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {goal.deadline && (
+                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                    {goal.deadline}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
