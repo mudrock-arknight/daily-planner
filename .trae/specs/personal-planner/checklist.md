@@ -3,9 +3,9 @@
 ## 阶段一验证
 - [x] Checkpoint 1: 首页能正确显示今日计划
 - [x] Checkpoint 2: 当前时间段提示正确显示
-- [ ] Checkpoint 3: 打卡功能能正常保存数据
-- [ ] Checkpoint 4: 待办事项能正常增删改查
-- [ ] Checkpoint 5: 界面在移动端显示正常
+- [x] Checkpoint 3: 打卡功能能正常保存数据
+- [x] Checkpoint 4: 待办事项能正常增删改查
+- [x] Checkpoint 5: 界面在移动端显示正常
 
 ## 阶段二验证
 - [ ] Checkpoint 6: 英语学习时长能正常累计

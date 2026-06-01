@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Save, CheckCircle2, Star, Moon, Sun } from 'lucide-react'
+import { Save, Star, Moon, Sun } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function CheckinPage() {
@@ -11,21 +11,17 @@ export default function CheckinPage() {
     sleepTime: string
     wakeTime: string
     moodScore: number
-    completedTasks: number
     studyHours: number
     exercised: boolean
     waterEnough: boolean
-    noPhoneBeforeSleep: boolean
   }>({
     date: today,
     sleepTime: '',
     wakeTime: '',
     moodScore: 3,
-    completedTasks: 0,
     studyHours: 0,
     exercised: false,
     waterEnough: false,
-    noPhoneBeforeSleep: false,
   })
 
   useEffect(() => {
@@ -102,63 +98,35 @@ export default function CheckinPage() {
               />
             </div>
           </div>
-          <label className="flex items-center gap-3 cursor-pointer mt-4">
-            <input
-              type="checkbox"
-              checked={checkin.noPhoneBeforeSleep}
-              onChange={(e) => setCheckin({ ...checkin, noPhoneBeforeSleep: e.target.checked })}
-              className="w-5 h-5 rounded text-blue-600"
-            />
-            <span className="text-gray-700">昨晚手机没有带上床</span>
-          </label>
         </div>
 
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
           <h2 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <Star className="text-yellow-500" size={20} />
-            今日状态
+            今日心情
           </h2>
-          <div>
-            <label className="block text-sm text-gray-600 mb-2">心情评分</label>
-            <div className="flex gap-1">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <button
-                  key={n}
-                  onClick={() => setCheckin({ ...checkin, moodScore: n })}
-                  className={`p-2 rounded-lg transition-colors ${checkin.moodScore >= n ? 'text-yellow-500' : 'text-gray-300'}`}
-                >
-                  <Star fill={checkin.moodScore >= n ? 'currentColor' : 'none'} size={24} />
-                </button>
-              ))}
-            </div>
+          <div className="flex gap-1">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button
+                key={n}
+                onClick={() => setCheckin({ ...checkin, moodScore: n })}
+                className={`p-2 rounded-lg transition-colors ${checkin.moodScore >= n ? 'text-yellow-500' : 'text-gray-300'}`}
+              >
+                <Star fill={checkin.moodScore >= n ? 'currentColor' : 'none'} size={24} />
+              </button>
+            ))}
           </div>
         </div>
 
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
-          <h2 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <CheckCircle2 className="text-green-500" size={20} />
-            完成情况
-          </h2>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm text-gray-600 mb-1">今日学习时长 (小时)</label>
-              <input
-                type="number"
-                value={checkin.studyHours}
-                onChange={(e) => setCheckin({ ...checkin, studyHours: parseFloat(e.target.value) || 0 })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-600 mb-1">完成任务数</label>
-              <input
-                type="number"
-                value={checkin.completedTasks}
-                onChange={(e) => setCheckin({ ...checkin, completedTasks: parseInt(e.target.value) || 0 })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
+          <h2 className="font-semibold text-gray-800 mb-4">学习时长</h2>
+          <label className="block text-sm text-gray-600 mb-1">今日学习时长 (小时)</label>
+          <input
+            type="number"
+            value={checkin.studyHours}
+            onChange={(e) => setCheckin({ ...checkin, studyHours: parseFloat(e.target.value) || 0 })}
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
         </div>
 
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
@@ -185,16 +153,6 @@ export default function CheckinPage() {
               />
               <span className="text-gray-700">喝水充足</span>
             </label>
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-r from-green-500 to-teal-500 rounded-2xl p-6 text-white">
-          <h2 className="font-semibold mb-4">今日完成度</h2>
-          <div className="text-center">
-            <div className="text-5xl font-bold">
-              {Math.round((checkin.moodScore * 20) + (checkin.studyHours * 10) + (checkin.completedTasks * 5) + (checkin.exercised ? 10 : 0) + (checkin.waterEnough ? 10 : 0))}
-            </div>
-            <div className="text-green-100 mt-1">/ 100</div>
           </div>
         </div>
       </div>

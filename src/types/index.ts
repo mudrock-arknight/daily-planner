@@ -1,7 +1,6 @@
 export interface TodoItem {
   id?: string
   title: string
-  priority: 'high' | 'medium' | 'low'
   completed: boolean
   created_at?: string
 }

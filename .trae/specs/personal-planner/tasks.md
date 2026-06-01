@@ -11,11 +11,11 @@
   - 可切换查看一周计划
 - **Acceptance Criteria Addressed**: AC-1, AC-2
 - **Test Requirements**:
-  - `programmatic` TR1.1: 周计划数据能正确从Supabase读取
-  - `human-judgement` TR1.2: 首页计划显示清晰、美观、易读
-- **Notes**: 检查日期对应关系，确保显示的是正确日期的计划
+  - `programmatic` TR1.1: 确保周计划数据能正确从Supabase读取
+  - `human-judgement` TR1.2: 验证首页计划显示清晰、美观
+- **Notes**: 确认当前日期与周计划日期对应
 
-### [ ] 任务2：简化打卡页面，只保留核心
+### [x] 任务2：简化打卡页面，只保留核心
 - **Priority**: P0
 - **Depends On**: None
 - **Description**: 简化打卡页面，去掉多余内容，只保留：
@@ -28,7 +28,7 @@
   - `programmatic` TR2.1: 打卡数据能保存到Supabase
   - `human-judgement` TR2.2: 界面简洁、操作方便
 
-### [ ] 任务3：优化待办页面，简单实用
+### [x] 任务3：优化待办页面，简单实用
 - **Priority**: P0
 - **Depends On**: None
 - **Description**: 简化待办页面，只保留：
@@ -40,7 +40,7 @@
   - `programmatic` TR3.1: 待办增删改查功能正常
   - `human-judgement` TR3.2: 界面清晰易用
 
-### [ ] 任务4：完善周计划页面
+### [x] 任务4：完善周计划页面
 - **Priority**: P0
 - **Depends On**: 任务1
 - **Description**: 确保周计划页面能完整展示一周安排

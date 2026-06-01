@@ -29,6 +29,7 @@ export default function TodoPage() {
     const { data } = await supabase
       .from('todo_items')
       .select('*')
+      .order('completed', { ascending: true })
       .order('created_at', { ascending: false })
     if (data) setTodos(data)
   }
@@ -37,14 +38,14 @@ export default function TodoPage() {
     e.preventDefault()
     if (!newTodo.trim()) return
 
-    const todo: Omit<TodoItem, 'id' | 'created_at' | 'priority'> = {
+    const todo: Omit<TodoItem, 'id' | 'created_at'> = {
       title: newTodo,
       completed: false,
     }
 
     const { data } = await supabase
       .from('todo_items')
-      .insert({ ...todo, priority: 'medium' })
+      .insert(todo)
       .select()
       .single()
 
@@ -69,59 +70,63 @@ export default function TodoPage() {
   }
 
   return (
-    <div className="p-4 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">待办事项</h1>
+    <div className="p-6 max-w-2xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">待办事项</h1>
+        <p className="text-gray-500">管理你的日常任务</p>
+      </div>
 
-      <form onSubmit={handleAddTodo} className="mb-6">
-        <div className="flex gap-3">
+      <form onSubmit={handleAddTodo} className="mb-8">
+        <div className="flex gap-4">
           <input
             type="text"
             value={newTodo}
             onChange={(e) => setNewTodo(e.target.value)}
             placeholder="添加新任务..."
-            className="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 px-5 py-4 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-base"
           />
           <button
             type="submit"
-            className="bg-blue-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+            className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-8 py-4 rounded-2xl font-semibold hover:from-indigo-700 hover:to-indigo-800 transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
           >
-            <Plus size={20} />
+            <Plus size={22} />
             添加
           </button>
         </div>
       </form>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {todos.map((todo) => (
           <div
             key={todo.id}
-            className="bg-white rounded-xl p-4 shadow-sm flex items-center gap-3"
+            className={`bg-white rounded-2xl p-5 shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-4 ${todo.completed ? 'opacity-70' : ''}`}
           >
             <button
               onClick={() => toggleTodo(todo.id!, todo.completed)}
-              className="flex-shrink-0"
+              className="flex-shrink-0 transition-transform hover:scale-110"
             >
               {todo.completed ? (
-                <CheckCircle2 className="text-green-500" size={24} />
+                <CheckCircle2 className="text-emerald-500" size={28} />
               ) : (
-                <Circle className="text-gray-300" size={24} />
+                <Circle className="text-gray-300 hover:text-indigo-400" size={28} />
               )}
             </button>
-            <span className={`flex-1 ${todo.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>
+            <span className={`flex-1 text-lg ${todo.completed ? 'line-through text-gray-400' : 'text-gray-800'}`}>
               {todo.title}
             </span>
             <button
               onClick={() => handleDeleteTodo(todo.id!)}
-              className="text-gray-400 hover:text-red-500 transition-colors"
+              className="text-gray-400 hover:text-red-500 transition-colors p-2 hover:bg-red-50 rounded-xl"
             >
-              <Trash2 size={20} />
+              <Trash2 size={22} />
             </button>
           </div>
         ))}
         {todos.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
-            <p>还没有待办事项</p>
-            <p className="text-sm">添加你的第一个任务吧！</p>
+          <div className="text-center py-16 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+            <div className="text-5xl mb-4">📝</div>
+            <p className="text-gray-600 text-lg font-medium mb-2">还没有待办事项</p>
+            <p className="text-gray-400">添加你的第一个任务开始吧！</p>
           </div>
         )}
       </div>
