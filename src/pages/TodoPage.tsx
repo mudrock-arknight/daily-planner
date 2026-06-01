@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, CheckCircle2, Circle } from 'lucide-react'
+import { Plus, Trash2, CheckCircle2, Circle, ListTodo, Star } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useStore } from '../store/useStore'
 import type { TodoItem } from '../types'
@@ -69,66 +69,114 @@ export default function TodoPage() {
     deleteTodo(id)
   }
 
+  const incompleteCount = todos.filter(t => !t.completed).length
+  const completeCount = todos.filter(t => t.completed).length
+  const completionRate = todos.length > 0 ? Math.round((completeCount / todos.length) * 100) : 0
+
   return (
-    <div className="p-6 max-w-2xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">待办事项</h1>
-        <p className="text-gray-500">管理你的日常任务</p>
+    <div className="min-h-screen py-6 px-4 relative z-10">
+      <div className="bg-decorations">
+        <div className="bg-decoration-1"></div>
+        <div className="bg-decoration-2"></div>
       </div>
 
-      <form onSubmit={handleAddTodo} className="mb-8">
-        <div className="flex gap-4">
-          <input
-            type="text"
-            value={newTodo}
-            onChange={(e) => setNewTodo(e.target.value)}
-            placeholder="添加新任务..."
-            className="flex-1 px-5 py-4 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-base"
-          />
-          <button
-            type="submit"
-            className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-8 py-4 rounded-2xl font-semibold hover:from-indigo-700 hover:to-indigo-800 transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
-          >
-            <Plus size={22} />
-            添加
-          </button>
+      <div className="max-w-2xl mx-auto">
+        <div className="text-center mb-8 animate-fadeIn">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl mb-4 shadow-2xl animate-float">
+            <ListTodo className="text-white" size={40} />
+          </div>
+          <h1 className="text-4xl font-bold text-white mb-2">待办事项</h1>
+          <p className="text-white/80">管理你的日常任务</p>
         </div>
-      </form>
 
-      <div className="space-y-4">
-        {todos.map((todo) => (
-          <div
-            key={todo.id}
-            className={`bg-white rounded-2xl p-5 shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-4 ${todo.completed ? 'opacity-70' : ''}`}
-          >
+        <div className="bg-white rounded-3xl p-6 shadow-xl mb-6 animate-fadeIn stagger-1">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-blue-600">{incompleteCount}</div>
+                <div className="text-sm text-gray-500">未完成</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-green-600">{completeCount}</div>
+                <div className="text-sm text-gray-500">已完成</div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-3xl font-bold gradient-text">{completionRate}%</div>
+              <div className="text-sm text-gray-500">完成率</div>
+            </div>
+          </div>
+          <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full transition-all duration-1000 progress-bar"
+              style={{ width: `${completionRate}%` }}
+            />
+          </div>
+        </div>
+
+        <form onSubmit={handleAddTodo} className="mb-8 animate-fadeIn stagger-2">
+          <div className="flex gap-3">
+            <input
+              type="text"
+              value={newTodo}
+              onChange={(e) => setNewTodo(e.target.value)}
+              placeholder="添加新任务..."
+              className="flex-1 px-5 py-4 rounded-2xl border border-gray-200 focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all text-base input-glow"
+            />
             <button
-              onClick={() => toggleTodo(todo.id!, todo.completed)}
-              className="flex-shrink-0 transition-transform hover:scale-110"
+              type="submit"
+              disabled={!newTodo.trim()}
+              className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-4 rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 disabled:opacity-50 disabled:transform-none disabled:cursor-not-allowed btn-hover flex items-center gap-2"
             >
-              {todo.completed ? (
-                <CheckCircle2 className="text-emerald-500" size={28} />
-              ) : (
-                <Circle className="text-gray-300 hover:text-indigo-400" size={28} />
-              )}
-            </button>
-            <span className={`flex-1 text-lg ${todo.completed ? 'line-through text-gray-400' : 'text-gray-800'}`}>
-              {todo.title}
-            </span>
-            <button
-              onClick={() => handleDeleteTodo(todo.id!)}
-              className="text-gray-400 hover:text-red-500 transition-colors p-2 hover:bg-red-50 rounded-xl"
-            >
-              <Trash2 size={22} />
+              <Plus size={22} />
+              添加
             </button>
           </div>
-        ))}
-        {todos.length === 0 && (
-          <div className="text-center py-16 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-            <div className="text-5xl mb-4">📝</div>
-            <p className="text-gray-600 text-lg font-medium mb-2">还没有待办事项</p>
-            <p className="text-gray-400">添加你的第一个任务开始吧！</p>
-          </div>
-        )}
+        </form>
+
+        <div className="space-y-4">
+          {todos.length === 0 ? (
+            <div className="text-center py-20 bg-white/90 backdrop-blur rounded-3xl border-2 border-dashed border-gray-200 animate-fadeIn">
+              <div className="w-24 h-24 bg-gradient-to-br from-yellow-100 to-orange-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                <Star className="text-yellow-500" size={48} />
+              </div>
+              <p className="text-gray-700 text-xl font-semibold mb-2">还没有待办事项</p>
+              <p className="text-gray-400">添加你的第一个任务开始吧！</p>
+            </div>
+          ) : (
+            todos.map((todo, idx) => (
+              <div
+                key={todo.id}
+                className={`bg-white rounded-3xl p-5 shadow-lg card-hover transition-all duration-300 flex items-center gap-4 ${
+                  todo.completed ? 'opacity-70 bg-gray-50' : ''
+                } animate-fadeIn`}
+                style={{ animationDelay: `${idx * 0.08}s` }}
+              >
+                <button
+                  onClick={() => toggleTodo(todo.id!, todo.completed)}
+                  className="flex-shrink-0 transition-all duration-300 icon-bounce"
+                >
+                  {todo.completed ? (
+                    <CheckCircle2 className="text-green-500" size={32} />
+                  ) : (
+                    <Circle className="text-gray-300 hover:text-blue-500" size={32} />
+                  )}
+                </button>
+                <span className={`flex-1 text-lg ${
+                  todo.completed ? 'line-through text-gray-400' : 'text-gray-800'
+                }`}>
+                  {todo.title}
+                </span>
+                <button
+                  onClick={() => handleDeleteTodo(todo.id!)}
+                  className="text-gray-400 hover:text-red-500 transition-colors p-3 hover:bg-red-50 rounded-2xl icon-bounce"
+                >
+                  <Trash2 size={22} />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
   )

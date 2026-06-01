@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react'
-import { Calendar, Target, CheckCircle2, AlertCircle, BookOpen, Brain, GraduationCap, Coffee, Loader2 } from 'lucide-react'
+import { Calendar, Target, CheckCircle2, AlertCircle, BookOpen, Brain, GraduationCap, Coffee, Loader2, Sparkles, Clock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
-const themeColors: Record<string, { bg: string; text: string; border: string; gradient: string }> = {
-  blue: { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-200', gradient: 'from-blue-500 to-blue-600' },
-  red: { bg: 'bg-red-50', text: 'text-red-600', border: 'border-red-200', gradient: 'from-red-500 to-red-600' },
-  green: { bg: 'bg-green-50', text: 'text-green-600', border: 'border-green-200', gradient: 'from-green-500 to-green-600' },
-  orange: { bg: 'bg-orange-50', text: 'text-orange-600', border: 'border-orange-200', gradient: 'from-orange-500 to-orange-600' },
-  purple: { bg: 'bg-purple-50', text: 'text-purple-600', border: 'border-purple-200', gradient: 'from-purple-500 to-purple-600' },
-  teal: { bg: 'bg-teal-50', text: 'text-teal-600', border: 'border-teal-200', gradient: 'from-teal-500 to-teal-600' },
-  pink: { bg: 'bg-pink-50', text: 'text-pink-600', border: 'border-pink-200', gradient: 'from-pink-500 to-pink-600' },
+const themeColors: Record<string, { bg: string; text: string; border: string; gradient: string; light: string }> = {
+  blue: { bg: 'bg-gradient-to-br from-blue-400 to-indigo-500', text: 'text-blue-600', border: 'border-blue-200', gradient: 'from-blue-500 to-indigo-600', light: 'bg-blue-50' },
+  red: { bg: 'bg-gradient-to-br from-rose-400 to-red-500', text: 'text-rose-600', border: 'border-rose-200', gradient: 'from-rose-500 to-red-600', light: 'bg-red-50' },
+  green: { bg: 'bg-gradient-to-br from-emerald-400 to-green-500', text: 'text-emerald-600', border: 'border-emerald-200', gradient: 'from-emerald-500 to-green-600', light: 'bg-green-50' },
+  orange: { bg: 'bg-gradient-to-br from-amber-400 to-orange-500', text: 'text-amber-600', border: 'border-amber-200', gradient: 'from-amber-500 to-orange-600', light: 'bg-orange-50' },
+  purple: { bg: 'bg-gradient-to-br from-violet-400 to-purple-500', text: 'text-violet-600', border: 'border-violet-200', gradient: 'from-violet-500 to-purple-600', light: 'bg-purple-50' },
+  teal: { bg: 'bg-gradient-to-br from-teal-400 to-cyan-500', text: 'text-teal-600', border: 'border-teal-200', gradient: 'from-teal-500 to-cyan-600', light: 'bg-teal-50' },
+  pink: { bg: 'bg-gradient-to-br from-pink-400 to-fuchsia-500', text: 'text-pink-600', border: 'border-pink-200', gradient: 'from-pink-500 to-fuchsia-600', light: 'bg-pink-50' },
 }
 
 const typeIcons = {
@@ -72,12 +72,29 @@ export default function WeeklyPlanPage() {
   const targetHours = weeklyPlan?.data?.weeklyReview?.targetHours || 100
   const progress = Math.min(100, Math.round((totalEnglishHours / targetHours) * 100))
 
+  function isTimeBlockPast(timeRange: string) {
+    const now = new Date()
+    const [endTime] = timeRange.split('-')
+    const [hours, minutes] = endTime.split(':').map(Number)
+    const blockEnd = new Date()
+    blockEnd.setHours(hours, minutes, 0, 0)
+    return now > blockEnd
+  }
+
   if (loading) {
     return (
-      <div className="p-4 max-w-4xl mx-auto pb-32">
-        <div className="flex flex-col items-center justify-center py-20">
-          <Loader2 size={48} className="text-indigo-500 animate-spin mb-4" />
-          <p className="text-gray-500">加载中...</p>
+      <div className="min-h-screen py-6 px-4 relative z-10">
+        <div className="bg-decorations">
+          <div className="bg-decoration-1"></div>
+          <div className="bg-decoration-2"></div>
+        </div>
+        <div className="max-w-4xl mx-auto pb-32">
+          <div className="flex flex-col items-center justify-center py-32">
+            <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center mb-6 backdrop-blur">
+              <Loader2 size={48} className="text-white animate-spin" />
+            </div>
+            <p className="text-white/90 text-xl">加载中...</p>
+          </div>
         </div>
       </div>
     )
@@ -85,17 +102,25 @@ export default function WeeklyPlanPage() {
 
   if (error) {
     return (
-      <div className="p-4 max-w-4xl mx-auto pb-32">
-        <div className="bg-red-50 rounded-2xl p-8 text-center border border-red-200">
-          <AlertCircle size={48} className="mx-auto text-red-500 mb-4" />
-          <h3 className="text-red-800 font-medium mb-2">出错了</h3>
-          <p className="text-red-600 mb-4">{error}</p>
-          <button
-            onClick={loadWeeklyPlan}
-            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-          >
-            重试
-          </button>
+      <div className="min-h-screen py-6 px-4 relative z-10">
+        <div className="bg-decorations">
+          <div className="bg-decoration-1"></div>
+          <div className="bg-decoration-2"></div>
+        </div>
+        <div className="max-w-4xl mx-auto pb-32">
+          <div className="bg-white/90 backdrop-blur rounded-3xl p-8 text-center shadow-xl animate-fadeIn">
+            <div className="w-20 h-20 bg-red-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
+              <AlertCircle size={48} className="text-red-500" />
+            </div>
+            <h3 className="text-red-800 font-bold text-xl mb-3">出错了</h3>
+            <p className="text-red-600 mb-6">{error}</p>
+            <button
+              onClick={loadWeeklyPlan}
+              className="px-8 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-2xl font-semibold hover:from-red-600 hover:to-rose-700 transition-all shadow-lg hover:shadow-xl btn-hover"
+            >
+              重试
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -103,233 +128,324 @@ export default function WeeklyPlanPage() {
 
   if (!weeklyPlan) {
     return (
-      <div className="p-4 max-w-4xl mx-auto pb-32">
-        <div className="text-center py-16">
-          <AlertCircle size={48} className="mx-auto text-gray-300 mb-4" />
-          <h3 className="text-gray-500 font-medium mb-2">暂无周计划</h3>
-          <p className="text-gray-400 text-sm">请添加周计划以查看详细安排</p>
+      <div className="min-h-screen py-6 px-4 relative z-10">
+        <div className="bg-decorations">
+          <div className="bg-decoration-1"></div>
+          <div className="bg-decoration-2"></div>
+        </div>
+        <div className="max-w-4xl mx-auto pb-32">
+          <div className="text-center py-32 bg-white/90 backdrop-blur rounded-3xl shadow-xl animate-fadeIn">
+            <div className="w-24 h-24 bg-gray-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
+              <AlertCircle size={48} className="text-gray-400" />
+            </div>
+            <h3 className="text-gray-600 font-bold text-xl mb-3">暂无周计划</h3>
+            <p className="text-gray-400">请添加周计划以查看详细安排</p>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="p-4 max-w-4xl mx-auto pb-32">
-      <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-6 text-white mb-6 shadow-lg">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <div className="text-white/80 text-sm mb-1">第 {weeklyPlan?.week?.replace('第', '').replace('周', '')} 周</div>
-            <div className="text-2xl font-bold">本周学习计划</div>
-          </div>
-          <Calendar size={40} className="text-white/80" />
-        </div>
-        <div className="flex items-center gap-6">
-          <div>
-            <div className="text-white/60 text-sm">英语目标进度</div>
-            <div className="text-2xl font-bold">{totalEnglishHours}/{targetHours}h</div>
-          </div>
-          <div className="flex-1">
-            <div className="h-2 bg-white/30 rounded-full overflow-hidden">
-              <div className="h-full bg-white rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+    <div className="min-h-screen py-6 px-4 relative z-10">
+      <div className="bg-decorations">
+        <div className="bg-decoration-1"></div>
+        <div className="bg-decoration-2"></div>
+        <div className="bg-decoration-3"></div>
+      </div>
+
+      <div className="max-w-4xl mx-auto pb-32">
+        <div className="bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-3xl p-8 text-white mb-8 shadow-2xl animate-fadeIn overflow-hidden relative">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 animate-float"></div>
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2 animate-float" style={{animationDelay: '1s'}}></div>
+          
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <div className="text-white/80 text-sm mb-2 flex items-center gap-2">
+                  <Calendar className="w-5 h-5" />
+                  第 {weeklyPlan?.week?.replace('第', '').replace('周', '')} 周
+                </div>
+                <div className="text-4xl font-bold">本周学习计划</div>
+              </div>
+              <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center backdrop-blur animate-pulse-slow">
+                <Sparkles size={40} className="text-white" />
+              </div>
+            </div>
+            <div className="flex items-center gap-8">
+              <div>
+                <div className="text-white/70 text-sm mb-1">英语目标进度</div>
+                <div className="text-4xl font-bold">{totalEnglishHours}/{targetHours}h</div>
+              </div>
+              <div className="flex-1">
+                <div className="h-4 bg-white/30 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-white rounded-full transition-all duration-1500 progress-bar" 
+                    style={{ width: `${progress}%` }} 
+                  />
+                </div>
+                <div className="text-right text-white/80 text-sm mt-2">{progress}%</div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {weeklyPlan?.data?.goals && (
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-6">
-          <h2 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <Target className="text-purple-500" size={20} />
-            本周目标
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            {weeklyPlan.data.goals.map((goal: any) => (
-              <div
-                key={goal.id}
-                className={`p-4 rounded-xl ${
-                  goal.type === 'exam' ? 'bg-red-50 border border-red-100' :
-                  goal.type === 'study' ? 'bg-green-50 border border-green-100' :
-                  'bg-blue-50 border border-blue-100'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-gray-800 text-sm">{goal.text}</span>
-                  {goal.type === 'exam' && <span className="text-xs bg-red-200 text-red-700 px-2 py-0.5 rounded">考试</span>}
-                  {goal.type === 'study' && <span className="text-xs bg-green-200 text-green-700 px-2 py-0.5 rounded">学习</span>}
-                </div>
-                {goal.progress !== undefined && (
-                  <div>
-                    <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${
-                          goal.type === 'exam' ? 'bg-red-500' : 'bg-green-500'
-                        }`}
-                        style={{ width: `${goal.progress}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-                {goal.deadline && <div className="text-xs text-gray-500 mt-2">截止: {goal.deadline}</div>}
+        {weeklyPlan?.data?.goals && (
+          <div className="bg-white rounded-3xl p-8 shadow-xl mb-8 animate-fadeIn stagger-1">
+            <h2 className="font-bold text-gray-800 text-2xl mb-6 flex items-center gap-3">
+              <div className="w-12 h-12 bg-purple-100 rounded-2xl flex items-center justify-center">
+                <Target className="text-purple-600" size={24} />
               </div>
-            ))}
+              本周目标
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {weeklyPlan.data.goals.map((goal: any, idx: number) => (
+                <div
+                  key={goal.id}
+                  className={`p-6 rounded-3xl border-2 transition-all duration-300 card-hover ${
+                    goal.type === 'exam' ? 'bg-red-50 border-red-100' :
+                    goal.type === 'study' ? 'bg-green-50 border-green-100' :
+                    'bg-blue-50 border-blue-100'
+                  } animate-fadeIn`}
+                  style={{ animationDelay: `${idx * 0.1}s` }}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <span className="font-semibold text-gray-800 text-base flex-1">{goal.text}</span>
+                    {goal.type === 'exam' && (
+                      <span className="text-xs bg-red-200 text-red-700 px-3 py-1 rounded-full font-semibold">考试</span>
+                    )}
+                    {goal.type === 'study' && (
+                      <span className="text-xs bg-green-200 text-green-700 px-3 py-1 rounded-full font-semibold">学习</span>
+                    )}
+                  </div>
+                  {goal.progress !== undefined && (
+                    <div className="mb-3">
+                      <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-1500 progress-bar ${
+                            goal.type === 'exam' ? 'bg-gradient-to-r from-red-500 to-rose-500' :
+                            goal.type === 'study' ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
+                            'bg-gradient-to-r from-blue-500 to-indigo-500'
+                          }`}
+                          style={{ width: `${goal.progress}%` }}
+                        />
+                      </div>
+                      <div className="text-sm text-gray-500 mt-2 text-right">{goal.progress}%</div>
+                    </div>
+                  )}
+                  {goal.deadline && (
+                    <div className="text-sm text-gray-500 flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      截止: {goal.deadline}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="bg-white rounded-3xl p-8 shadow-xl mb-8 animate-fadeIn stagger-2">
+          <h2 className="font-bold text-gray-800 text-2xl mb-6 flex items-center gap-3">
+            <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center">
+              <Calendar className="text-blue-600" size={24} />
+            </div>
+            每日概览
+          </h2>
+          <div className="grid grid-cols-7 gap-3">
+            {dayNames.map((day, idx) => {
+              const schedule = weeklyPlan?.data?.dailySchedule?.[day]
+              const theme = schedule?.themeColor ? themeColors[schedule.themeColor] : themeColors.blue
+              const isToday = day === todayName
+              return (
+                <button
+                  key={day}
+                  onClick={() => {
+                    setSelectedDay(day)
+                    setExpandedDay(day)
+                  }}
+                  className={`relative p-4 rounded-2xl text-center transition-all duration-300 card-hover ${
+                    expandedDay === day
+                      ? `${theme.bg} text-white shadow-lg scale-105`
+                      : isToday
+                      ? 'bg-gradient-to-br from-blue-100 to-indigo-100 text-blue-700 ring-2 ring-blue-300'
+                      : 'bg-gray-50 hover:bg-gray-100'
+                  } animate-fadeIn`}
+                  style={{ animationDelay: `${idx * 0.08}s` }}
+                >
+                  <div className="font-bold text-lg">{day}</div>
+                  {schedule && (
+                    <>
+                      <div className={`text-xs mt-2 ${expandedDay === day ? 'font-semibold' : 'text-gray-600'}`}>
+                        {schedule.date}
+                      </div>
+                      <div className={`text-xs mt-1 ${expandedDay === day ? 'font-semibold' : 'text-gray-500'}`}>
+                        {schedule.englishTarget}h
+                      </div>
+                    </>
+                  )}
+                  {isToday && !schedule && (
+                    <div className="absolute -top-2 -right-2 w-5 h-5 bg-blue-500 rounded-full border-2 border-white shadow"></div>
+                  )}
+                </button>
+              )
+            })}
           </div>
         </div>
-      )}
 
-      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-6">
-        <h2 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-          <Calendar className="text-blue-500" size={20} />
-          每日概览
-        </h2>
-        <div className="grid grid-cols-7 gap-2">
-          {dayNames.map((day) => {
-            const schedule = weeklyPlan?.data?.dailySchedule?.[day]
-            const theme = schedule?.themeColor ? themeColors[schedule.themeColor] : themeColors.blue
-            const isToday = day === todayName
-            return (
-              <button
-                key={day}
-                onClick={() => {
-                  setSelectedDay(day)
-                  setExpandedDay(day)
-                }}
-                className={`relative p-3 rounded-xl text-center transition-all ${
-                  expandedDay === day
-                    ? `${theme.bg} ${theme.text} ring-2 ring-offset-1 ring-indigo-500`
-                    : isToday
-                    ? 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
-                    : 'bg-gray-50 hover:bg-gray-100'
-                }`}
-              >
-                <div className="font-medium text-sm">{day}</div>
-                {schedule && (
-                  <>
-                    <div className={`text-xs mt-1 ${expandedDay === day ? 'font-medium' : 'text-gray-500'}`}>
-                      {schedule.date}
-                    </div>
-                    <div className={`text-xs mt-1 ${expandedDay === day ? 'font-medium' : 'text-gray-400'}`}>
-                      {schedule.englishTarget}h
-                    </div>
-                  </>
-                )}
-                {isToday && !schedule && (
-                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-indigo-500 rounded-full" />
-                )}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {selectedDay && weeklyPlan?.data?.dailySchedule?.[selectedDay] && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
-          <div className="bg-gradient-to-r from-indigo-500 to-purple-600 p-4 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-white/80 text-sm">{selectedDay}</div>
-                <div className="text-xl font-bold">
-                  {weeklyPlan.data.dailySchedule[selectedDay].date}
+        {selectedDay && weeklyPlan?.data?.dailySchedule?.[selectedDay] && (
+          <div className="bg-white rounded-3xl shadow-xl overflow-hidden mb-8 animate-fadeIn stagger-3">
+            <div className={`bg-gradient-to-r ${
+              weeklyPlan.data.dailySchedule[selectedDay].themeColor 
+                ? themeColors[weeklyPlan.data.dailySchedule[selectedDay].themeColor].gradient 
+                : themeColors.blue.gradient
+            } p-8 text-white`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-white/80 text-base mb-1">{selectedDay}</div>
+                  <div className="text-3xl font-bold">
+                    {weeklyPlan.data.dailySchedule[selectedDay].date}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="px-4 py-2 bg-white/20 backdrop-blur rounded-2xl text-sm font-semibold">
+                    {weeklyPlan.data.dailySchedule[selectedDay].theme}
+                  </span>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="px-3 py-1 bg-white/20 rounded-full text-sm">
-                  {weeklyPlan.data.dailySchedule[selectedDay].theme}
+              <div className="mt-5 flex items-center gap-6 flex-wrap">
+                <span className="text-white/90 flex items-center gap-2">
+                  <Target className="w-5 h-5" />
+                  英语目标: {weeklyPlan.data.dailySchedule[selectedDay].englishTarget}h
+                </span>
+                <span className="text-white/40">|</span>
+                <span className="text-white/90">
+                  重点: {weeklyPlan.data.dailySchedule[selectedDay].focusGoal}
                 </span>
               </div>
             </div>
-            <div className="mt-3 flex items-center gap-4 flex-wrap">
-              <span className="text-white/80 text-sm">
-                英语目标: {weeklyPlan.data.dailySchedule[selectedDay].englishTarget}h
-              </span>
-              <span className="text-white/60">|</span>
-              <span className="text-white/80 text-sm">
-                重点: {weeklyPlan.data.dailySchedule[selectedDay].focusGoal}
-              </span>
+
+            <div className="p-8">
+              {weeklyPlan.data.dailySchedule[selectedDay].timeBlocks && weeklyPlan.data.dailySchedule[selectedDay].timeBlocks.length > 0 ? (
+                <div className="space-y-4">
+                  {weeklyPlan.data.dailySchedule[selectedDay].timeBlocks.map((block: any, i: number) => {
+                    const Icon = typeIcons[block.type as keyof typeof typeIcons] || Target
+                    const blockTheme = block.type === 'class' ? themeColors.blue : 
+                                      block.type === 'study' ? themeColors.green : 
+                                      block.type === 'exam' ? themeColors.red :
+                                      block.type === 'break' ? themeColors.orange :
+                                      themeColors.purple
+                    const past = isTimeBlockPast(block.time)
+                    return (
+                      <div
+                        key={i}
+                        className={`flex items-start gap-5 p-6 rounded-2xl transition-all duration-300 card-hover ${
+                          past ? 'bg-gray-50 opacity-70' : blockTheme.light
+                        } animate-fadeIn`}
+                        style={{ animationDelay: `${i * 0.08}s` }}
+                      >
+                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                          block.type === 'class' ? 'bg-blue-100 text-blue-600' : 
+                          block.type === 'study' ? 'bg-green-100 text-green-600' : 
+                          block.type === 'exam' ? 'bg-red-100 text-red-600' :
+                          block.type === 'break' ? 'bg-amber-100 text-amber-600' :
+                          'bg-violet-100 text-violet-600'
+                        }`}>
+                          <Icon size={28} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3 mb-2">
+                            <span className={`text-lg font-bold ${blockTheme.text}`}>{block.time}</span>
+                            {past && (
+                              <span className="text-xs bg-green-100 text-green-600 px-3 py-1 rounded-full flex items-center gap-1 font-semibold">
+                                <CheckCircle2 size={14} />
+                                已完成
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-gray-800 text-lg font-medium">{block.content}</div>
+                          {block.detail && (
+                            <div className="text-gray-600 mt-2">{block.detail}</div>
+                          )}
+                          {block.location && (
+                            <div className="text-sm text-gray-500 mt-2 flex items-center gap-2">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                              {block.location}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-16">
+                  <div className="w-20 h-20 bg-gray-100 rounded-3xl flex items-center justify-center mx-auto mb-4">
+                    <AlertCircle className="text-gray-400" size={36} />
+                  </div>
+                  <p className="text-gray-500 text-lg">暂无当天时间块安排</p>
+                </div>
+              )}
             </div>
           </div>
+        )}
 
-          <div className="p-4">
-            {weeklyPlan.data.dailySchedule[selectedDay].timeBlocks && weeklyPlan.data.dailySchedule[selectedDay].timeBlocks.length > 0 ? (
-              <div className="space-y-2">
-                {weeklyPlan.data.dailySchedule[selectedDay].timeBlocks.map((block: any, i: number) => {
-                  const Icon = typeIcons[block.type as keyof typeof typeIcons] || Target
-                  return (
-                    <div
-                      key={i}
-                      className={`flex items-start gap-3 p-3 rounded-xl ${
-                        block.type === 'class' ? 'bg-blue-50' :
-                        block.type === 'study' ? 'bg-green-50' :
-                        block.type === 'exam' ? 'bg-red-50' :
-                        block.type === 'break' ? 'bg-yellow-50' :
-                        'bg-purple-50'
-                      }`}
-                    >
-                      <div
-                        className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                          block.type === 'class' ? 'bg-blue-100 text-blue-600' :
-                          block.type === 'study' ? 'bg-green-100 text-green-600' :
-                          block.type === 'exam' ? 'bg-red-100 text-red-600' :
-                          block.type === 'break' ? 'bg-yellow-100 text-yellow-600' :
-                          'bg-purple-100 text-purple-600'
-                        }`}
-                      >
-                        <Icon size={12} />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-800">{block.time}</span>
-                        </div>
-                        <div className="text-gray-700">{block.content}</div>
-                        {block.detail && <div className="text-sm text-gray-500 mt-1">{block.detail}</div>}
-                        {block.location && <div className="text-xs text-gray-400 mt-1">📍 {block.location}</div>}
-                      </div>
-                    </div>
-                  )
-                })}
+        {weeklyPlan?.data?.notes && weeklyPlan.data.notes.length > 0 && (
+          <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-3xl p-8 border border-yellow-200 mb-8 animate-fadeIn stagger-4">
+            <h2 className="font-bold text-yellow-800 text-2xl mb-6 flex items-center gap-3">
+              <div className="w-12 h-12 bg-yellow-100 rounded-2xl flex items-center justify-center">
+                <AlertCircle className="text-yellow-600" size={24} />
               </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <p>暂无当天时间块安排</p>
-              </div>
-            )}
+              重要提醒
+            </h2>
+            <ul className="space-y-3">
+              {weeklyPlan.data.notes.map((note: string, i: number) => (
+                <li key={i} className="flex items-start gap-4 text-yellow-700 text-lg animate-fadeIn" style={{ animationDelay: `${i * 0.1}s` }}>
+                  <div className="w-8 h-8 bg-yellow-200 rounded-full flex items-center justify-center flex-shrink-0">
+                    <CheckCircle2 className="text-yellow-600" size={16} />
+                  </div>
+                  <span>{note}</span>
+                </li>
+              ))}
+            </ul>
           </div>
-        </div>
-      )}
+        )}
 
-      {weeklyPlan?.data?.notes && weeklyPlan.data.notes.length > 0 && (
-        <div className="bg-yellow-50 rounded-2xl p-5 border border-yellow-200 mb-6">
-          <h2 className="font-semibold text-yellow-800 mb-3 flex items-center gap-2">
-            <AlertCircle className="text-yellow-600" size={20} />
-            重要提醒
-          </h2>
-          <ul className="space-y-2">
-            {weeklyPlan.data.notes.map((note: string, i: number) => (
-              <li key={i} className="flex items-start gap-2 text-yellow-700">
-                <CheckCircle2 className="text-yellow-600 mt-0.5 flex-shrink-0" size={16} />
-                <span>{note}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {weeklyPlan?.data?.weeklyReview && (
-        <div className="mt-6 space-y-4">
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-            <h3 className="font-semibold text-gray-800 mb-3">上周总结</h3>
-            <p className="text-gray-600">{weeklyPlan.data.weeklyReview.lastWeekSummary}</p>
+        {weeklyPlan?.data?.weeklyReview && (
+          <div className="space-y-6 animate-fadeIn stagger-5">
+            <div className="bg-white rounded-3xl p-8 shadow-xl">
+              <h3 className="font-bold text-gray-800 text-xl mb-4 flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                  <CheckCircle2 className="text-blue-600" size={20} />
+                </div>
+                上周总结
+              </h3>
+              <p className="text-gray-700 text-lg leading-relaxed">{weeklyPlan.data.weeklyReview.lastWeekSummary}</p>
+            </div>
+            <div className="bg-white rounded-3xl p-8 shadow-xl">
+              <h3 className="font-bold text-gray-800 text-xl mb-4 flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                  <Target className="text-green-600" size={20} />
+                </div>
+                本周重点
+              </h3>
+              <p className="text-gray-700 text-lg leading-relaxed">{weeklyPlan.data.weeklyReview.thisWeekFocus}</p>
+            </div>
+            <div className="bg-white rounded-3xl p-8 shadow-xl">
+              <h3 className="font-bold text-gray-800 text-xl mb-4 flex items-center gap-3">
+                <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+                  <Sparkles className="text-purple-600" size={20} />
+                </div>
+                下周计划
+              </h3>
+              <p className="text-gray-700 text-lg leading-relaxed">{weeklyPlan.data.weeklyReview.nextWeekGoals}</p>
+            </div>
           </div>
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-            <h3 className="font-semibold text-gray-800 mb-3">本周重点</h3>
-            <p className="text-gray-600">{weeklyPlan.data.weeklyReview.thisWeekFocus}</p>
-          </div>
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-            <h3 className="font-semibold text-gray-800 mb-3">下周计划</h3>
-            <p className="text-gray-600">{weeklyPlan.data.weeklyReview.nextWeekGoals}</p>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
-
