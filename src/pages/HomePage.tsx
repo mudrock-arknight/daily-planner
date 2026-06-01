@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, Target, CheckCircle2, AlertCircle, BookOpen, Brain, GraduationCap, Coffee } from 'lucide-react';
+import { Calendar, Clock, Target, CheckCircle2, AlertCircle, BookOpen, Brain, GraduationCap, Coffee, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 
@@ -95,13 +95,15 @@ export default function HomePage() {
   const currentDaySchedule = weeklyPlan?.data?.dailySchedule?.[selectedDay];
   const theme = currentDaySchedule?.themeColor ? themeColors[currentDaySchedule.themeColor] : themeColors.blue;
 
-  function isTimeBlockPast(timeRange: string) {
+  function isTimeBlockPast(timeRange: string, blockDate: string) {
     const now = new Date();
     const [endTime] = timeRange.split('-');
-    const [hours, minutes] = endTime.split(':').map(Number);
-    const blockEnd = new Date();
-    blockEnd.setHours(hours, minutes, 0, 0);
-    return now > blockEnd;
+    const [endHours, endMinutes] = endTime.split(':').map(Number);
+    
+    const blockDateObj = new Date(blockDate);
+    blockDateObj.setHours(endHours, endMinutes, 0, 0);
+    
+    return now > blockDateObj;
   }
 
   return (
@@ -197,7 +199,7 @@ export default function HomePage() {
             <div className="space-y-3">
               {currentDaySchedule.timeBlocks.map((block: any, i: number) => {
                 const Icon = typeIcons[block.type as keyof typeof typeIcons] || Target;
-                const past = isTimeBlockPast(block.time);
+                const past = isTimeBlockPast(block.time, currentDaySchedule.date);
                 const blockTheme = block.type === 'class' ? themeColors.blue : 
                                     block.type === 'study' ? themeColors.green : 
                                     block.type === 'exam' ? themeColors.red :
@@ -301,7 +303,7 @@ export default function HomePage() {
               本周目标
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {weeklyPlan.data.goals.map((goal: any, idx: number) => (
+              {weeklyPlan.data.goals.slice(0, 4).map((goal: any, idx: number) => (
                 <div 
                   key={goal.id} 
                   className={`p-5 rounded-2xl border-2 transition-all duration-300 card-hover ${
@@ -343,6 +345,73 @@ export default function HomePage() {
                   )}
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {weeklyPlan?.data?.longTermGoals && (
+          <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-3xl p-6 shadow-xl animate-fadeIn stagger-4">
+            <h2 className="font-bold text-gray-800 text-lg mb-4 flex items-center gap-2">
+              <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+                <Sparkles className="text-indigo-600" size={20} />
+              </div>
+              大学长期目标
+            </h2>
+            <div className="grid grid-cols-1 gap-3">
+              {weeklyPlan.data.longTermGoals.map((goal: any, idx: number) => {
+                const categoryColors: Record<string, string> = {
+                  language: 'from-blue-400 to-indigo-500',
+                  tech: 'from-green-400 to-emerald-500',
+                  finance: 'from-amber-400 to-orange-500',
+                  skill: 'from-purple-400 to-pink-500',
+                  hobby: 'from-rose-400 to-red-500'
+                };
+                const categoryBg: Record<string, string> = {
+                  language: 'bg-blue-50',
+                  tech: 'bg-green-50',
+                  finance: 'bg-amber-50',
+                  skill: 'bg-purple-50',
+                  hobby: 'bg-rose-50'
+                };
+                const categoryText: Record<string, string> = {
+                  language: 'text-blue-600',
+                  tech: 'text-green-600',
+                  finance: 'text-amber-600',
+                  skill: 'text-purple-600',
+                  hobby: 'text-rose-600'
+                };
+                
+                return (
+                  <div 
+                    key={goal.id} 
+                    className={`p-4 rounded-xl ${categoryBg[goal.category] || 'bg-gray-50'} border border-transparent transition-all duration-300 card-hover animate-fadeIn`}
+                    style={{ animationDelay: `${idx * 0.05}s` }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className={`w-2 h-8 rounded-full bg-gradient-to-b ${categoryColors[goal.category] || 'bg-gray-400'}`}></span>
+                        <span className="font-medium text-gray-700">{goal.text}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-xs px-2 py-1 rounded-full ${categoryBg[goal.category] || 'bg-gray-100'} ${categoryText[goal.category] || 'text-gray-600'}`}>
+                          {goal.category === 'language' ? '语言' :
+                           goal.category === 'tech' ? '技术' :
+                           goal.category === 'finance' ? '金融' :
+                           goal.category === 'skill' ? '技能' :
+                           goal.category === 'hobby' ? '爱好' : '其他'}
+                        </span>
+                        <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full rounded-full bg-gradient-to-r ${categoryColors[goal.category] || 'bg-gray-400'}`}
+                            style={{ width: `${goal.progress}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-gray-500 w-8">{goal.progress}%</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

@@ -67,10 +67,90 @@ function parseDiary(content) {
   return diary
 }
 
+const dailyRoutine = {
+  breakfast: { time: '07:30-08:00', content: '早饭', type: 'break' },
+  morningWash: { time: '07:00-07:30', content: '起床洗漱', type: 'break' },
+  lunch: { time: '12:00-13:00', content: '午饭', type: 'break' },
+  afternoonRest: { time: '13:00-14:00', content: '午休', type: 'break' },
+  dinner: { time: '18:00-19:00', content: '晚饭', type: 'break' },
+  eveningWash: { time: '22:30-23:00', content: '洗漱准备睡觉', type: 'break' },
+  sleep: { time: '23:00-07:00', content: '睡觉', type: 'break' }
+}
+
+const longTermGoals = [
+  { id: 'lt1', text: '英语 - 刷高分、考六级、准备雅思', category: 'language', progress: 10, type: 'study', priority: 'high' },
+  { id: 'lt2', text: '人工智能学习', category: 'tech', progress: 5, type: 'study', priority: 'high' },
+  { id: 'lt3', text: '投资知识 - 股票、量化投资、基金', category: 'finance', progress: 0, type: 'study', priority: 'medium' },
+  { id: 'lt4', text: '编程能力提升', category: 'tech', progress: 20, type: 'study', priority: 'high' },
+  { id: 'lt5', text: '单片机技能', category: 'tech', progress: 15, type: 'study', priority: 'medium' },
+  { id: 'lt6', text: '打字速度提升', category: 'skill', progress: 30, type: 'study', priority: 'low' },
+  { id: 'lt7', text: '练字（考研需要）', category: 'skill', progress: 0, type: 'study', priority: 'medium' },
+  { id: 'lt8', text: '艺术爱好 - 乐器/唱歌', category: 'hobby', progress: 0, type: 'hobby', priority: 'low' },
+  { id: 'lt9', text: '普通话 - 从三甲提升到二乙', category: 'skill', progress: 0, type: 'study', priority: 'low' }
+]
+
+function generateDailySchedule(dayName, dateStr, courses, englishHours = 2) {
+  const timeBlocks = []
+  
+  timeBlocks.push({ ...dailyRoutine.morningWash })
+  
+  timeBlocks.push({ ...dailyRoutine.breakfast })
+  
+  if (courses && courses.length > 0) {
+    courses.forEach(course => {
+      const [startTime] = course.time.split('-')
+      const [hours] = startTime.split(':').map(Number)
+      
+      if (hours < 12) {
+        timeBlocks.push({
+          time: course.time,
+          content: course.course,
+          location: course.location,
+          type: 'class'
+        })
+      }
+    })
+  }
+  
+  timeBlocks.push({ ...dailyRoutine.lunch })
+  timeBlocks.push({ ...dailyRoutine.afternoonRest })
+  
+  if (courses && courses.length > 0) {
+    courses.forEach(course => {
+      const [startTime] = course.time.split('-')
+      const [hours] = startTime.split(':').map(Number)
+      
+      if (hours >= 12) {
+        timeBlocks.push({
+          time: course.time,
+          content: course.course,
+          location: course.location,
+          type: 'class'
+        })
+      }
+    })
+  }
+  
+  if (englishHours > 0) {
+    timeBlocks.push({
+      time: '19:00-21:00',
+      content: '英语学习',
+      detail: '单词+阅读+听力轮换',
+      type: 'study'
+    })
+  }
+  
+  timeBlocks.push({ ...dailyRoutine.dinner })
+  timeBlocks.push({ ...dailyRoutine.eveningWash })
+  timeBlocks.push({ ...dailyRoutine.sleep })
+  
+  return timeBlocks
+}
+
 async function generateWeeklyPlan() {
   console.log('📖 读取日记...\n')
   
-  const diaryPath = 'diary/26.5.31.txt'
+  const diaryPath = 'diary/26.6.1.txt'
   let diaryContent = ''
   
   try {
@@ -85,163 +165,86 @@ async function generateWeeklyPlan() {
   
   const schedulePath = 'diary/大二下13周课表.csv'
   let scheduleContent = ''
+  let courses = {}
   
   try {
     scheduleContent = fs.readFileSync(schedulePath, 'utf-8')
+    courses = parseCSV(scheduleContent)
     console.log('✅ 课表已读取')
   } catch (err) {
     console.log('⚠️ 课表文件不存在，使用默认数据')
   }
   
-  const courses = scheduleContent ? parseCSV(scheduleContent) : {}
   const diary = parseDiary(diaryContent)
   
   console.log('\n📝 生成周计划...\n')
   
+  const today = new Date()
+  const startOfWeek = new Date(today)
+  startOfWeek.setDate(today.getDate() - today.getDay() + 1)
+  
+  const weekDays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+  const dailySchedule = {}
+  
+  weekDays.forEach((day, index) => {
+    const date = new Date(startOfWeek)
+    date.setDate(startOfWeek.getDate() + index)
+    const dateStr = `${date.getMonth() + 1}月${date.getDate()}日`
+    
+    const dayCourses = courses[day] || []
+    
+    let englishHours = 2
+    let theme = '学习日'
+    let themeColor = 'blue'
+    
+    if (index === 4) {
+      theme = '复习日'
+      themeColor = 'orange'
+      englishHours = 3
+    } else if (index === 5) {
+      theme = '休息日'
+      themeColor = 'teal'
+      englishHours = 0
+    } else if (index === 6) {
+      theme = '自由安排'
+      themeColor = 'purple'
+      englishHours = 1
+    }
+    
+    dailySchedule[day] = {
+      date: dateStr,
+      dayOfWeek: day,
+      theme: theme,
+      themeColor: themeColor,
+      timeBlocks: generateDailySchedule(day, dateStr, dayCourses, englishHours),
+      focusGoal: index < 5 ? '英语学习' : (index === 5 ? '休息放松' : '自由安排'),
+      englishTarget: englishHours
+    }
+  })
+  
   const weeklyPlan = {
-    week: '第15周',
+    week: `第${Math.ceil((today.getTime() - new Date('2026-01-01').getTime()) / (7 * 24 * 60 * 60 * 1000))}周`,
     data: {
-      startDate: '2026-06-09',
-      endDate: '2026-06-15',
+      startDate: startOfWeek.toISOString().split('T')[0],
+      endDate: new Date(startOfWeek.getTime() + 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       goals: [
-        { id: '1', text: '英语六级考试', progress: 0, deadline: '2026-06-13', type: 'exam' },
-        { id: '2', text: '每日单词背诵', progress: 50, totalHours: 100, deadline: '2026-06-13', type: 'study' },
-        { id: '3', text: '模拟题练习', progress: 30, totalHours: 100, deadline: '2026-06-13', type: 'study' }
+        { id: 'g1', text: '英语六级考试冲刺', progress: 0, deadline: '2025-06-14', type: 'exam' },
+        { id: 'g2', text: '每天英语学习2小时', progress: 0, type: 'study' },
+        ...longTermGoals.slice(0, 5).map((g, i) => ({ ...g, id: `g${i + 3}` }))
       ],
-      dailySchedule: {
-        '周一': {
-          date: '6月9日',
-          dayOfWeek: '周一',
-          theme: '冲刺日',
-          themeColor: 'blue',
-          timeBlocks: [
-            { time: '08:30-10:05', content: '概率论', location: '日新楼南408', type: 'class' },
-            { time: '10:25-12:00', content: '工程力学', location: '日新楼南401', type: 'class' },
-            { time: '12:00-14:00', content: '午饭+午休', type: 'break' },
-            { time: '14:00-17:20', content: '环境感知技术', location: '格物园E座908', type: 'class' },
-            { time: '17:20-18:30', content: '晚饭休息', type: 'break' },
-            { time: '18:30-21:00', content: '英语学习', detail: '背单词+阅读', type: 'study' },
-            { time: '21:00-22:00', content: '英语听力', type: 'study' },
-            { time: '22:00-23:00', content: '洗漱休息', type: 'break' }
-          ],
-          focusGoal: '英语冲刺',
-          englishTarget: 4.0
-        },
-        '周二': {
-          date: '6月10日',
-          dayOfWeek: '周二',
-          theme: '强化日',
-          themeColor: 'red',
-          timeBlocks: [
-            { time: '08:00-10:00', content: '英语单词', type: 'study' },
-            { time: '10:00-12:00', content: '工程力学', location: '日新楼南401', type: 'class' },
-            { time: '12:00-14:00', content: '午饭+午休', type: 'break' },
-            { time: '14:00-16:00', content: '英语阅读', type: 'study' },
-            { time: '16:00-18:00', content: '英语写作', type: 'study' },
-            { time: '18:00-19:00', content: '晚饭休息', type: 'break' },
-            { time: '19:00-22:00', content: '英语综合练习', type: 'study' },
-            { time: '22:00-23:00', content: '洗漱休息', type: 'break' }
-          ],
-          focusGoal: '英语强化',
-          englishTarget: 5.0
-        },
-        '周三': {
-          date: '6月11日',
-          dayOfWeek: '周三',
-          theme: '模拟日',
-          themeColor: 'green',
-          timeBlocks: [
-            { time: '08:00-10:00', content: '英语真题', type: 'exam' },
-            { time: '10:25-12:00', content: '平台技术', location: '格物园B座104', type: 'class' },
-            { time: '12:00-14:00', content: '午饭+午休', type: 'break' },
-            { time: '14:00-15:35', content: '体育课', location: '官龙山排球场', type: 'class' },
-            { time: '15:35-18:00', content: '批改卷子', type: 'study' },
-            { time: '18:00-19:00', content: '晚饭休息', type: 'break' },
-            { time: '19:00-22:00', content: '弱项突破', type: 'study' },
-            { time: '22:00-23:00', content: '洗漱休息', type: 'break' }
-          ],
-          focusGoal: '真题模拟',
-          englishTarget: 5.5
-        },
-        '周四': {
-          date: '6月12日',
-          dayOfWeek: '周四',
-          theme: '冲刺日',
-          themeColor: 'orange',
-          timeBlocks: [
-            { time: '08:00-10:00', content: '英语单词复习', type: 'study' },
-            { time: '10:25-12:00', content: '概率论', location: '日新楼南402', type: 'class' },
-            { time: '12:00-14:00', content: '午饭+午休', type: 'break' },
-            { time: '14:00-18:00', content: '英语全面复习', type: 'study' },
-            { time: '18:00-19:00', content: '晚饭休息', type: 'break' },
-            { time: '19:00-22:00', content: '作文模板背诵', type: 'study' },
-            { time: '22:00-23:00', content: '洗漱休息', type: 'break' }
-          ],
-          focusGoal: '最后冲刺',
-          englishTarget: 6.0
-        },
-        '周五': {
-          date: '6月13日',
-          dayOfWeek: '周五',
-          theme: '考试日',
-          themeColor: 'purple',
-          timeBlocks: [
-            { time: '08:00-12:00', content: '英语六级考试', type: 'exam' },
-            { time: '12:00-14:00', content: '午饭+午休', type: 'break' },
-            { time: '14:00-16:00', content: '英语学习', location: '日新楼南401', type: 'class' },
-            { time: '16:00-18:00', content: '放松休息', type: 'break' },
-            { time: '18:00-19:00', content: '晚饭', type: 'break' },
-            { time: '19:00-22:00', content: '自由安排', type: 'task' },
-            { time: '22:00-23:00', content: '洗漱休息', type: 'break' }
-          ],
-          focusGoal: '六级考试',
-          englishTarget: 0
-        },
-        '周六': {
-          date: '6月14日',
-          dayOfWeek: '周六',
-          theme: '休息日',
-          themeColor: 'teal',
-          timeBlocks: [
-            { time: '08:00-10:00', content: '睡懒觉', type: 'break' },
-            { time: '10:00-12:00', content: '休息娱乐', type: 'break' },
-            { time: '12:00-14:00', content: '午饭', type: 'break' },
-            { time: '14:00-18:00', content: '自由活动', type: 'task' },
-            { time: '18:00-19:00', content: '晚饭', type: 'break' },
-            { time: '19:00-22:00', content: '放松休息', type: 'break' },
-            { time: '22:00-23:00', content: '洗漱休息', type: 'break' }
-          ],
-          focusGoal: '考后放松',
-          englishTarget: 0
-        },
-        '周日': {
-          date: '6月15日',
-          dayOfWeek: '周日',
-          theme: '准备日',
-          themeColor: 'pink',
-          timeBlocks: [
-            { time: '08:00-10:00', content: '起床准备', type: 'break' },
-            { time: '10:00-12:00', content: '下周计划', type: 'task' },
-            { time: '12:00-14:00', content: '午饭', type: 'break' },
-            { time: '14:00-18:00', content: '学习/活动', type: 'study' },
-            { time: '18:00-19:00', content: '晚饭', type: 'break' },
-            { time: '19:00-22:00', content: '整理准备', type: 'task' },
-            { time: '22:00-23:00', content: '洗漱休息', type: 'break' }
-          ],
-          focusGoal: '准备下周',
-          englishTarget: 0
-        }
-      },
+      longTermGoals: longTermGoals,
+      dailySchedule: dailySchedule,
       notes: [
-        '六级考试倒计时：4天',
-        '每天坚持背单词',
-        '注意休息，保持状态'
+        '英语学习每天约2小时，合理安排',
+        '保证充足睡眠，23点前睡觉',
+        '每天吃早饭，保持健康',
+        '课余时间可安排长期目标学习'
       ],
       weeklyReview: {
-        lastWeekSummary: diary.reflection || '上周继续六级冲刺学习',
-        thisWeekFocus: diary.goals.join(', ') || '英语六级考试准备',
-        nextWeekGoals: diary.plans.join(', ') || '考试后休整',
-        totalEnglishHours: 20,
+        lastWeekSummary: diary.reflection || '继续六级冲刺和日常学习',
+        thisWeekFocus: '英语学习、长期目标培养',
+        nextWeekGoals: diary.plans.join(', ') || '持续学习',
+        totalEnglishHours: 10,
         targetHours: 100
       }
     }
@@ -250,8 +253,20 @@ async function generateWeeklyPlan() {
   console.log('📊 生成的计划摘要:')
   console.log('  周次:', weeklyPlan.week)
   console.log('  日期:', weeklyPlan.data.startDate, '-', weeklyPlan.data.endDate)
-  console.log('  目标数量:', weeklyPlan.data.goals.length)
-  console.log('  每日安排: 完整7天')
+  console.log('  短期目标数量:', weeklyPlan.data.goals.length)
+  console.log('  长期目标数量:', longTermGoals.length)
+  console.log('  每日安排: 完整7天，包含日常活动')
+  console.log('\n📋 每日作息安排:')
+  console.log('  07:00-07:30 起床洗漱')
+  console.log('  07:30-08:00 早饭')
+  console.log('  08:00-12:00 上午课程/学习')
+  console.log('  12:00-13:00 午饭')
+  console.log('  13:00-14:00 午休')
+  console.log('  14:00-18:00 下午课程/学习')
+  console.log('  18:00-19:00 晚饭')
+  console.log('  19:00-21:00 英语学习（约2小时）')
+  console.log('  22:30-23:00 洗漱准备睡觉')
+  console.log('  23:00-07:00 睡觉')
   
   return weeklyPlan
 }
@@ -281,10 +296,11 @@ async function updateWeeklyPlan() {
   
   console.log('\n✅ 周计划已成功更新到数据库!')
   console.log('\n📋 计划包含:')
-  console.log('  - 7天详细时间安排')
+  console.log('  - 7天详细时间安排（含日常活动）')
   console.log('  - 每日学习目标')
-  console.log('  - 英语学习时间追踪')
-  console.log('  - 重要提醒')
+  console.log('  - 短期+长期目标管理')
+  console.log('  - 英语学习时间（约2小时/天）')
+  console.log('  - 合理作息安排')
 }
 
 updateWeeklyPlan()

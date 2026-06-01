@@ -72,13 +72,15 @@ export default function WeeklyPlanPage() {
   const targetHours = weeklyPlan?.data?.weeklyReview?.targetHours || 100
   const progress = Math.min(100, Math.round((totalEnglishHours / targetHours) * 100))
 
-  function isTimeBlockPast(timeRange: string) {
-    const now = new Date()
-    const [endTime] = timeRange.split('-')
-    const [hours, minutes] = endTime.split(':').map(Number)
-    const blockEnd = new Date()
-    blockEnd.setHours(hours, minutes, 0, 0)
-    return now > blockEnd
+  function isTimeBlockPast(timeRange: string, blockDate: string) {
+    const now = new Date();
+    const [endTime] = timeRange.split('-');
+    const [endHours, endMinutes] = endTime.split(':').map(Number);
+    
+    const blockDateObj = new Date(blockDate);
+    blockDateObj.setHours(endHours, endMinutes, 0, 0);
+    
+    return now > blockDateObj;
   }
 
   if (loading) {
@@ -335,7 +337,7 @@ export default function WeeklyPlanPage() {
                                       block.type === 'exam' ? themeColors.red :
                                       block.type === 'break' ? themeColors.orange :
                                       themeColors.purple
-                    const past = isTimeBlockPast(block.time)
+                    const past = isTimeBlockPast(block.time, weeklyPlan.data.dailySchedule[selectedDay].date)
                     return (
                       <div
                         key={i}
