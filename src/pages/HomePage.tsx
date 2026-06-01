@@ -1,13 +1,32 @@
 import { useState, useEffect } from 'react'
-import { Calendar, Clock, Target, CheckCircle2, AlertCircle, Circle } from 'lucide-react'
+import { Calendar, Clock, Target, CheckCircle2, AlertCircle, Circle, BookOpen, GraduationCap, Coffee, Brain } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useStore } from '../store/useStore'
+
+const themeColors: Record<string, { bg: string; text: string; border: string; gradient: string }> = {
+  blue: { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-200', gradient: 'from-blue-500 to-blue-600' },
+  red: { bg: 'bg-red-50', text: 'text-red-600', border: 'border-red-200', gradient: 'from-red-500 to-red-600' },
+  green: { bg: 'bg-green-50', text: 'text-green-600', border: 'border-green-200', gradient: 'from-green-500 to-green-600' },
+  orange: { bg: 'bg-orange-50', text: 'text-orange-600', border: 'border-orange-200', gradient: 'from-orange-500 to-orange-600' },
+  purple: { bg: 'bg-purple-50', text: 'text-purple-600', border: 'border-purple-200', gradient: 'from-purple-500 to-purple-600' },
+  teal: { bg: 'bg-teal-50', text: 'text-teal-600', border: 'border-teal-200', gradient: 'from-teal-500 to-teal-600' },
+  pink: { bg: 'bg-pink-50', text: 'text-pink-600', border: 'border-pink-200', gradient: 'from-pink-500 to-pink-600' },
+}
+
+const typeIcons = {
+  class: BookOpen,
+  study: Brain,
+  exam: GraduationCap,
+  break: Coffee,
+  task: Target,
+}
 
 export default function HomePage() {
   const [currentTimeBlock, setCurrentTimeBlock] = useState<string>('')
   const [currentTask, setCurrentTask] = useState<string>('')
   const [todaysSchedule, setTodaysSchedule] = useState<any>(null)
   const [weeklyPlan, setWeeklyPlan] = useState<any>(null)
+  const [selectedDay, setSelectedDay] = useState<string>('')
   const { todos } = useStore()
 
   const today = new Date()
@@ -34,6 +53,7 @@ export default function HomePage() {
       setWeeklyPlan(data[0])
       if (data[0].data && data[0].data.dailySchedule) {
         setTodaysSchedule(data[0].data.dailySchedule[todayName])
+        setSelectedDay(todayName)
       }
     }
   }
@@ -52,22 +72,25 @@ export default function HomePage() {
       task = '准备起床，开始新的一天'
     } else if (totalMinutes < 600) { // 8:30-10:00
       timeBlock = '上午学习时间'
-      task = todaysSchedule?.classes?.[0] || '进行晨间学习'
+      task = todaysSchedule?.timeBlocks?.[0]?.content || '进行晨间学习'
     } else if (totalMinutes < 720) { // 10:00-12:00
       timeBlock = '上午第二时段'
-      task = todaysSchedule?.classes?.[1] || '继续学习或上课'
+      const block = todaysSchedule?.timeBlocks?.find((b: any) => b.time.includes('10:') || b.time.includes('11:'))
+      task = block?.content || '继续学习或上课'
     } else if (totalMinutes < 840) { // 12:00-14:00
       timeBlock = '午休时间'
       task = '吃午饭，适当休息'
     } else if (totalMinutes < 990) { // 14:00-16:30
       timeBlock = '下午学习时间'
-      task = todaysSchedule?.classes?.[2] || '专注学习中'
+      const block = todaysSchedule?.timeBlocks?.find((b: any) => b.time.includes('14:') || b.time.includes('15:'))
+      task = block?.content || '专注学习中'
     } else if (totalMinutes < 1110) { // 16:30-18:30
       timeBlock = '傍晚'
       task = '休息一下，准备晚饭'
     } else if (totalMinutes < 1260) { // 18:30-21:00
       timeBlock = '晚间学习时间'
-      task = todaysSchedule?.tasks?.[0] || '晚间学习时间'
+      const block = todaysSchedule?.timeBlocks?.find((b: any) => b.time.includes('19:') || b.time.includes('20:') || b.time.includes('21:'))
+      task = block?.content || '晚间学习时间'
     } else if (totalMinutes < 1320) { // 21:00-22:00
       timeBlock = '睡前准备'
       task = '整理一天，准备休息'
@@ -81,72 +104,98 @@ export default function HomePage() {
   }
 
   const incompleteTodos = todos.filter(t => !t.completed).slice(0, 3)
+  const currentDaySchedule = weeklyPlan?.data?.dailySchedule?.[selectedDay]
+  const theme = currentDaySchedule?.themeColor ? themeColors[currentDaySchedule.themeColor] : themeColors.blue
 
   return (
     <div className="p-4 max-w-2xl mx-auto">
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 text-white mb-6">
+      <div className={`bg-gradient-to-r ${theme.gradient} rounded-2xl p-6 text-white mb-6 shadow-lg`}>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <div className="text-blue-100 text-sm mb-1">{todayName}</div>
+            <div className="text-white/80 text-sm mb-1">{todayName}</div>
             <div className="text-3xl font-bold">{formattedDate}</div>
           </div>
-          <Calendar size={48} className="text-blue-200" />
+          <Calendar size={48} className="text-white/80" />
         </div>
         
-        <div className="bg-white/20 rounded-xl p-4">
+        <div className="bg-white/20 backdrop-blur rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <Clock className="text-yellow-300" size={20} />
-            <span className="text-blue-100 text-sm">当前时段</span>
+            <span className="text-white/80 text-sm">当前时段</span>
           </div>
           <div className="text-xl font-semibold mb-1">{currentTimeBlock}</div>
-          <div className="text-blue-100">{currentTask}</div>
+          <div className="text-white/80">{currentTask}</div>
         </div>
+
+        {currentDaySchedule && (
+          <div className="mt-4 flex items-center gap-2">
+            <span className="px-3 py-1 bg-white/20 rounded-full text-sm">{currentDaySchedule.theme}</span>
+            <span className="text-white/60 text-sm">|</span>
+            <span className="text-white/80 text-sm">今日英语目标: {currentDaySchedule.englishTarget}h</span>
+          </div>
+        )}
       </div>
 
-      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 mb-6">
-        <h2 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-          <Target className="text-green-500" size={20} />
-          今日任务
-        </h2>
+      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold text-gray-800 flex items-center gap-2">
+            <Target className={theme.text} size={20} />
+            今日计划
+          </h2>
+          <div className="flex gap-1">
+            {dayNames.slice(1).map((day) => (
+              <button
+                key={day}
+                onClick={() => {
+                  setSelectedDay(day)
+                  setTodaysSchedule(weeklyPlan?.data?.dailySchedule?.[day])
+                }}
+                className={`px-3 py-1 rounded-full text-sm transition-colors ${
+                  selectedDay === day 
+                    ? `${theme.bg} ${theme.text} font-medium` 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {day.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
         
-        {todaysSchedule ? (
-          <div className="space-y-4">
-            {todaysSchedule.classes && todaysSchedule.classes.length > 0 && (
-              <div>
-                <div className="text-sm text-gray-500 mb-2">📚 今日课程</div>
-                <div className="space-y-2">
-                  {todaysSchedule.classes.map((cls: string, i: number) => (
-                    <div key={i} className="flex items-center gap-2 text-gray-700">
-                      <span className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-medium">
-                        {i + 1}
-                      </span>
-                      {cls}
+        {currentDaySchedule?.timeBlocks ? (
+          <div className="space-y-2">
+            {currentDaySchedule.timeBlocks.map((block: any, i: number) => {
+              const Icon = typeIcons[block.type as keyof typeof typeIcons] || Target
+              const isPast = isTimeBlockPast(block.time)
+              
+              return (
+                <div 
+                  key={i} 
+                  className={`flex items-start gap-3 p-3 rounded-xl transition-colors ${
+                    isPast ? 'bg-gray-50 opacity-60' : block.type === 'break' ? 'bg-yellow-50' : theme.bg
+                  }`}
+                >
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                    block.type === 'class' ? 'bg-blue-100 text-blue-600' :
+                    block.type === 'study' ? 'bg-green-100 text-green-600' :
+                    block.type === 'exam' ? 'bg-red-100 text-red-600' :
+                    block.type === 'break' ? 'bg-yellow-100 text-yellow-600' :
+                    'bg-purple-100 text-purple-600'
+                  }`}>
+                    <Icon size={12} />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-800">{block.time}</span>
+                      {isPast && <span className="text-xs text-green-500">已完成</span>}
                     </div>
-                  ))}
+                    <div className="text-gray-700">{block.content}</div>
+                    {block.detail && <div className="text-sm text-gray-500 mt-1">{block.detail}</div>}
+                    {block.location && <div className="text-xs text-gray-400 mt-1">📍 {block.location}</div>}
+                  </div>
                 </div>
-              </div>
-            )}
-            
-            {todaysSchedule.tasks && todaysSchedule.tasks.length > 0 && (
-              <div>
-                <div className="text-sm text-gray-500 mb-2">✅ 今日待办</div>
-                <div className="space-y-2">
-                  {todaysSchedule.tasks.map((task: string, i: number) => (
-                    <div key={i} className="flex items-center gap-2 text-gray-700">
-                      <CheckCircle2 className="text-gray-300" size={18} />
-                      {task}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {todaysSchedule.focusTime && (
-              <div className="bg-yellow-50 rounded-lg p-3">
-                <div className="text-sm text-yellow-700 font-medium">⏰ 专注时间段</div>
-                <div className="text-yellow-600 text-sm">{todaysSchedule.focusTime}</div>
-              </div>
-            )}
+              )
+            })}
           </div>
         ) : (
           <div className="text-center py-8 text-gray-500">
@@ -157,7 +206,7 @@ export default function HomePage() {
         )}
       </div>
 
-      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 mb-6">
+      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-gray-800 flex items-center gap-2">
             <CheckCircle2 className="text-blue-500" size={20} />
@@ -183,31 +232,43 @@ export default function HomePage() {
       </div>
 
       {weeklyPlan?.data?.goals && (
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
           <h2 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <Target className="text-purple-500" size={20} />
             本周目标
           </h2>
-          <div className="space-y-3">
-            {weeklyPlan.data.goals.slice(0, 4).map((goal: any) => (
-              <div key={goal.id} className="flex items-center gap-3">
-                <div className="flex-1">
-                  <div className="text-gray-700">{goal.text}</div>
-                  {goal.progress !== undefined && (
-                    <div className="mt-1">
-                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-purple-500 rounded-full transition-all"
-                          style={{ width: `${goal.progress}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
+          <div className="grid grid-cols-2 gap-3">
+            {weeklyPlan.data.goals.map((goal: any) => (
+              <div 
+                key={goal.id} 
+                className={`p-4 rounded-xl ${
+                  goal.type === 'exam' ? 'bg-red-50 border border-red-100' :
+                  goal.type === 'study' ? 'bg-green-50 border border-green-100' :
+                  'bg-blue-50 border border-blue-100'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium text-gray-800 text-sm">{goal.text}</span>
+                  {goal.type === 'exam' && <span className="text-xs bg-red-200 text-red-700 px-2 py-0.5 rounded">考试</span>}
+                  {goal.type === 'study' && <span className="text-xs bg-green-200 text-green-700 px-2 py-0.5 rounded">学习</span>}
                 </div>
+                {goal.progress !== undefined && (
+                  <div>
+                    <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full transition-all ${
+                          goal.type === 'exam' ? 'bg-red-500' : 'bg-green-500'
+                        }`}
+                        style={{ width: `${goal.progress}%` }}
+                      />
+                    </div>
+                    {goal.totalHours && (
+                      <div className="text-xs text-gray-500 mt-1">目标: {goal.totalHours}h</div>
+                    )}
+                  </div>
+                )}
                 {goal.deadline && (
-                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                    {goal.deadline}
-                  </span>
+                  <div className="text-xs text-gray-500 mt-2">截止: {goal.deadline}</div>
                 )}
               </div>
             ))}
@@ -216,4 +277,13 @@ export default function HomePage() {
       )}
     </div>
   )
+}
+
+function isTimeBlockPast(timeRange: string): boolean {
+  const now = new Date()
+  const [endTime] = timeRange.split('-')
+  const [hours, minutes] = endTime.split(':').map(Number)
+  const blockEnd = new Date()
+  blockEnd.setHours(hours, minutes, 0, 0)
+  return now > blockEnd
 }
