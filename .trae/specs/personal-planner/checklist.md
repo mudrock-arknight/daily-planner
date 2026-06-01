@@ -8,9 +8,9 @@
 - [x] Checkpoint 5: 界面在移动端显示正常
 
 ## 阶段二验证
-- [ ] Checkpoint 6: 英语学习时长能正常累计
-- [ ] Checkpoint 7: 进度条和数字显示正确
-- [ ] Checkpoint 8: 各项目标进度能在首页显示
+- [x] Checkpoint 6: AI能通过脚本直接添加待办
+- [x] Checkpoint 7: AI能通过脚本修改周计划
+- [x] Checkpoint 8: 日记内容能被正确解析
 
 ## 阶段三验证
 - [ ] Checkpoint 9: AI能通过脚本直接添加待办

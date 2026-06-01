@@ -51,7 +51,7 @@
 ---
 
 ## 阶段二：AI直接操作能力（核心功能）
-### [ ] 任务5：创建AI命令工具脚本
+### [x] 任务5：创建AI命令工具脚本
 - **Priority**: P1
 - **Depends On**: 任务3
 - **Description**: 创建Node.js脚本工具，让AI可以直接：
@@ -63,7 +63,7 @@
   - `programmatic` TR5.1: 脚本能成功操作Supabase数据库
   - `human-judgement` TR5.2: 使用简单，一行命令就能添加数据
 
-### [ ] 任务6：从课表和日记理解并生成计划
+### [x] 任务6：从课表和日记理解并生成计划
 - **Priority**: P1
 - **Depends On**: 任务5
 - **Description**: AI能读取课表CSV和日记文件，理解内容后生成周计划
