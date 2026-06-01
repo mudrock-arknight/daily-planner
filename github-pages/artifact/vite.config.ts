@@ -3,10 +3,7 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: './',
-  build: {
-    assetsDir: 'assets',
-  },
+  base: '/daily-planner/',
   server: {
     host: '0.0.0.0',
     port: 5173,
