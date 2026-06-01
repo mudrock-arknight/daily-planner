@@ -67,24 +67,72 @@ export default function HomePage() {
     let timeBlock = '';
     let task = '';
 
-    if (totalMinutes < 510) {
-      timeBlock = '清晨';
-      task = '美好的一天即将开始';
-    } else if (totalMinutes < 720) {
-      timeBlock = '上午';
-      task = todaysSchedule?.timeBlocks?.[0]?.content || '专注学习时间';
-    } else if (totalMinutes < 840) {
-      timeBlock = '午间';
-      task = '享受午餐，适当休息';
-    } else if (totalMinutes < 1080) {
-      timeBlock = '下午';
-      task = todaysSchedule?.timeBlocks?.[2]?.content || '继续努力';
-    } else if (totalMinutes < 1260) {
-      timeBlock = '晚间';
-      task = todaysSchedule?.timeBlocks?.[4]?.content || '晚间学习';
+    // 从实际的时间块中找到当前对应的任务
+    if (todaysSchedule?.timeBlocks && todaysSchedule.timeBlocks.length > 0) {
+      for (const block of todaysSchedule.timeBlocks) {
+        const [startStr, endStr] = block.time.split('-');
+        if (startStr && endStr) {
+          const [startHour, startMin] = startStr.split(':').map(Number);
+          const [endHour, endMin] = endStr.split(':').map(Number);
+          const startTotal = startHour * 60 + startMin;
+          const endTotal = endHour * 60 + endMin;
+          
+          if (totalMinutes >= startTotal && totalMinutes < endTotal) {
+            task = block.content;
+            // 确定时间段
+            if (startHour < 12) timeBlock = '上午';
+            else if (startHour < 14) timeBlock = '午间';
+            else if (startHour < 18) timeBlock = '下午';
+            else if (startHour < 21) timeBlock = '晚间';
+            else timeBlock = '深夜';
+            break;
+          }
+        }
+      }
+      
+      // 如果没找到匹配，用默认值
+      if (!task) {
+        if (totalMinutes < 510) {
+          timeBlock = '清晨';
+          task = '美好的一天即将开始';
+        } else if (totalMinutes < 720) {
+          timeBlock = '上午';
+          task = '专注学习时间';
+        } else if (totalMinutes < 840) {
+          timeBlock = '午间';
+          task = '享受午餐，适当休息';
+        } else if (totalMinutes < 1080) {
+          timeBlock = '下午';
+          task = '继续努力';
+        } else if (totalMinutes < 1260) {
+          timeBlock = '晚间';
+          task = '晚间学习';
+        } else {
+          timeBlock = '深夜';
+          task = '该休息了，明天见';
+        }
+      }
     } else {
-      timeBlock = '深夜';
-      task = '该休息了，明天见';
+      // 没有时间块数据时用默认
+      if (totalMinutes < 510) {
+        timeBlock = '清晨';
+        task = '美好的一天即将开始';
+      } else if (totalMinutes < 720) {
+        timeBlock = '上午';
+        task = '专注学习时间';
+      } else if (totalMinutes < 840) {
+        timeBlock = '午间';
+        task = '享受午餐，适当休息';
+      } else if (totalMinutes < 1080) {
+        timeBlock = '下午';
+        task = '继续努力';
+      } else if (totalMinutes < 1260) {
+        timeBlock = '晚间';
+        task = '晚间学习';
+      } else {
+        timeBlock = '深夜';
+        task = '该休息了，明天见';
+      }
     }
 
     setCurrentTimeBlock(timeBlock);
