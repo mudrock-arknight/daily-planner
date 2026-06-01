@@ -24,7 +24,6 @@ const typeIcons = {
 export default function HomePage() {
   const [currentTimeBlock, setCurrentTimeBlock] = useState<string>('')
   const [currentTask, setCurrentTask] = useState<string>('')
-  const [todaysSchedule, setTodaysSchedule] = useState<any>(null)
   const [weeklyPlan, setWeeklyPlan] = useState<any>(null)
   const [selectedDay, setSelectedDay] = useState<string>('')
   const { todos } = useStore()
@@ -40,7 +39,7 @@ export default function HomePage() {
     
     const interval = setInterval(updateCurrentTask, 60000)
     return () => clearInterval(interval)
-  }, [weeklyPlan])
+  }, [weeklyPlan, selectedDay])
 
   async function loadWeeklyPlan() {
     const { data } = await supabase
@@ -52,7 +51,6 @@ export default function HomePage() {
     if (data && data.length > 0) {
       setWeeklyPlan(data[0])
       if (data[0].data && data[0].data.dailySchedule) {
-        setTodaysSchedule(data[0].data.dailySchedule[todayName])
         setSelectedDay(todayName)
       }
     }
@@ -63,40 +61,71 @@ export default function HomePage() {
     const hours = now.getHours()
     const minutes = now.getMinutes()
     const totalMinutes = hours * 60 + minutes
+    
+    const currentDaySchedule = weeklyPlan?.data?.dailySchedule?.[selectedDay]
+    const timeBlocks = currentDaySchedule?.timeBlocks
 
     let timeBlock = ''
     let task = ''
 
-    if (totalMinutes < 510) { // 0-8:30
-      timeBlock = '早晨'
-      task = '准备起床，开始新的一天'
-    } else if (totalMinutes < 600) { // 8:30-10:00
-      timeBlock = '上午学习时间'
-      task = todaysSchedule?.timeBlocks?.[0]?.content || '进行晨间学习'
-    } else if (totalMinutes < 720) { // 10:00-12:00
-      timeBlock = '上午第二时段'
-      const block = todaysSchedule?.timeBlocks?.find((b: any) => b.time.includes('10:') || b.time.includes('11:'))
-      task = block?.content || '继续学习或上课'
-    } else if (totalMinutes < 840) { // 12:00-14:00
-      timeBlock = '午休时间'
-      task = '吃午饭，适当休息'
-    } else if (totalMinutes < 990) { // 14:00-16:30
-      timeBlock = '下午学习时间'
-      const block = todaysSchedule?.timeBlocks?.find((b: any) => b.time.includes('14:') || b.time.includes('15:'))
-      task = block?.content || '专注学习中'
-    } else if (totalMinutes < 1110) { // 16:30-18:30
-      timeBlock = '傍晚'
-      task = '休息一下，准备晚饭'
-    } else if (totalMinutes < 1260) { // 18:30-21:00
-      timeBlock = '晚间学习时间'
-      const block = todaysSchedule?.timeBlocks?.find((b: any) => b.time.includes('19:') || b.time.includes('20:') || b.time.includes('21:'))
-      task = block?.content || '晚间学习时间'
-    } else if (totalMinutes < 1320) { // 21:00-22:00
-      timeBlock = '睡前准备'
-      task = '整理一天，准备休息'
-    } else { // 22:00以后
-      timeBlock = '睡眠时间'
-      task = '该睡觉了，保持良好作息'
+    if (timeBlocks && timeBlocks.length > 0) {
+      let found = false
+      for (const block of timeBlocks) {
+        const [startStr, endStr] = block.time.split('-')
+        const [startHours, startMinutes] = startStr.split(':').map(Number)
+        const [endHours, endMinutes] = endStr.split(':').map(Number)
+        const startTotal = startHours * 60 + startMinutes
+        const endTotal = endHours * 60 + endMinutes
+
+        if (totalMinutes >= startTotal && totalMinutes < endTotal) {
+          timeBlock = block.time
+          task = block.content
+          found = true
+          break
+        }
+      }
+      
+      if (!found) {
+        if (totalMinutes < 480) { // 0-8:00
+          timeBlock = '早晨'
+          task = '准备起床，开始新的一天'
+        } else if (totalMinutes < 720) { // 8:00-12:00
+          timeBlock = '上午'
+          task = '上午学习或活动时间'
+        } else if (totalMinutes < 840) { // 12:00-14:00
+          timeBlock = '午休时间'
+          task = '吃午饭，适当休息'
+        } else if (totalMinutes < 1080) { // 14:00-18:00
+          timeBlock = '下午'
+          task = '下午学习或活动时间'
+        } else if (totalMinutes < 1260) { // 18:00-21:00
+          timeBlock = '晚间'
+          task = '晚间学习或休闲时间'
+        } else { // 21:00以后
+          timeBlock = '休息时间'
+          task = '该休息了，保持良好作息'
+        }
+      }
+    } else {
+      if (totalMinutes < 480) {
+        timeBlock = '早晨'
+        task = '准备起床，开始新的一天'
+      } else if (totalMinutes < 720) {
+        timeBlock = '上午'
+        task = '上午学习或活动时间'
+      } else if (totalMinutes < 840) {
+        timeBlock = '午休时间'
+        task = '吃午饭，适当休息'
+      } else if (totalMinutes < 1080) {
+        timeBlock = '下午'
+        task = '下午学习或活动时间'
+      } else if (totalMinutes < 1260) {
+        timeBlock = '晚间'
+        task = '晚间学习或休闲时间'
+      } else {
+        timeBlock = '休息时间'
+        task = '该休息了，保持良好作息'
+      }
     }
 
     setCurrentTimeBlock(timeBlock)
@@ -140,15 +169,14 @@ export default function HomePage() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-gray-800 flex items-center gap-2">
             <Target className={theme.text} size={20} />
-            今日计划
+            每日计划
           </h2>
-          <div className="flex gap-1">
-            {dayNames.slice(1).map((day) => (
+          <div className="flex gap-1 flex-wrap">
+            {dayNames.map((day) => (
               <button
                 key={day}
                 onClick={() => {
                   setSelectedDay(day)
-                  setTodaysSchedule(weeklyPlan?.data?.dailySchedule?.[day])
                 }}
                 className={`px-3 py-1 rounded-full text-sm transition-colors ${
                   selectedDay === day 
@@ -281,7 +309,7 @@ export default function HomePage() {
 
 function isTimeBlockPast(timeRange: string): boolean {
   const now = new Date()
-  const [endTime] = timeRange.split('-')
+  const [, endTime] = timeRange.split('-')
   const [hours, minutes] = endTime.split(':').map(Number)
   const blockEnd = new Date()
   blockEnd.setHours(hours, minutes, 0, 0)
