@@ -44,6 +44,107 @@ const longTermGoals = [
   { id: 'lt9', text: '普通话 - 从三甲提升到二乙', category: 'skill', progress: 0, type: 'study', priority: 'low' }
 ]
 
+function generateDaySchedule(dayName, dateStr, dayCourses, index) {
+  const timeBlocks = []
+  let currentTime = '07:00'
+  
+  timeBlocks.push({ time: `${currentTime}-07:30`, content: '起床洗漱', type: 'break' })
+  currentTime = '07:30'
+  timeBlocks.push({ time: `${currentTime}-07:50`, content: '早饭', type: 'break' })
+  currentTime = '07:50'
+  
+  const morningCourses = dayCourses.filter(c => {
+    const [startTime] = c.time.split('-')
+    const [startHour] = startTime.split(':').map(Number)
+    return startHour < 12
+  })
+  
+  const afternoonCourses = dayCourses.filter(c => {
+    const [startTime] = c.time.split('-')
+    const [startHour] = startTime.split(':').map(Number)
+    return startHour >= 12
+  })
+  
+  if (morningCourses.length > 0) {
+    morningCourses.forEach(course => {
+      timeBlocks.push({
+        time: course.time,
+        content: course.course,
+        location: course.location,
+        type: 'class'
+      })
+    })
+  } else {
+    timeBlocks.push({ time: `${currentTime}-09:00`, content: '英语学习', detail: '背单词+听力训练', type: 'study' })
+    currentTime = '09:00'
+    timeBlocks.push({ time: `${currentTime}-10:30`, content: 'AI/编程学习', detail: '人工智能或编程实践', type: 'study' })
+    currentTime = '10:30'
+    timeBlocks.push({ time: `${currentTime}-11:30`, content: '自由学习', detail: '单片机/投资知识/练字等', type: 'study' })
+    currentTime = '11:30'
+  }
+  
+  timeBlocks.push({ time: '12:00-12:30', content: '午饭', type: 'break' })
+  timeBlocks.push({ time: '12:30-13:00', content: '午休', type: 'break' })
+  currentTime = '13:00'
+  
+  if (afternoonCourses.length > 0) {
+    afternoonCourses.forEach(course => {
+      timeBlocks.push({
+        time: course.time,
+        content: course.course,
+        location: course.location,
+        type: 'class'
+      })
+    })
+  } else {
+    timeBlocks.push({ time: `${currentTime}-14:30`, content: '英语学习', detail: '阅读+写作', type: 'study' })
+    currentTime = '14:30'
+    timeBlocks.push({ time: `${currentTime}-16:00`, content: '编程实践', detail: '项目开发或算法练习', type: 'study' })
+    currentTime = '16:00'
+    timeBlocks.push({ time: `${currentTime}-17:30`, content: '技能提升', detail: '打字速度/乐器练习', type: 'study' })
+    currentTime = '17:30'
+  }
+  
+  timeBlocks.push({ time: '18:00-18:30', content: '晚饭', type: 'break' })
+  timeBlocks.push({ time: '18:30-19:00', content: '休息放松', type: 'break' })
+  timeBlocks.push({ time: '19:00-21:00', content: '英语学习', detail: '综合英语能力提升', type: 'study' })
+  timeBlocks.push({ time: '21:00-22:00', content: '复盘总结', detail: '今日总结+明日计划', type: 'study' })
+  timeBlocks.push({ time: '22:00-22:30', content: '洗漱准备睡觉', type: 'break' })
+  timeBlocks.push({ time: '22:30-07:00', content: '睡觉', type: 'break' })
+
+  let englishHours = 2.5
+  let theme = '学习日'
+  let themeColor = 'blue'
+  let focusGoal = '英语学习'
+
+  if (index === 4) {
+    theme = '复习日'
+    themeColor = 'orange'
+    englishHours = 3
+    focusGoal = '全面复习'
+  } else if (index === 5) {
+    theme = '休息日'
+    themeColor = 'teal'
+    englishHours = 1.5
+    focusGoal = '适当放松'
+  } else if (index === 6) {
+    theme = '自由安排'
+    themeColor = 'purple'
+    englishHours = 1
+    focusGoal = '查漏补缺'
+  }
+
+  return {
+    date: dateStr,
+    dayOfWeek: dayName,
+    theme: theme,
+    themeColor: themeColor,
+    timeBlocks: timeBlocks,
+    focusGoal: focusGoal,
+    englishTarget: englishHours
+  }
+}
+
 async function generateWeeklyPlan() {
   console.log('📖 读取文件...\n')
 
@@ -54,12 +155,12 @@ async function generateWeeklyPlan() {
     courses = parseCSV(scheduleContent)
     console.log('✅ 课表已读取')
   } catch (err) {
-    console.log('⚠️ 课表不存在，继续')
+    console.log('⚠️ 课表不存在，使用默认计划')
   }
 
   const today = new Date()
   const startOfWeek = new Date(today)
-  startOfWeek.setDate(today.getDate() - today.getDay() + 1) // 周一
+  startOfWeek.setDate(today.getDate() - today.getDay() + 1)
 
   const weekDays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
   const dailySchedule = {}
@@ -67,88 +168,10 @@ async function generateWeeklyPlan() {
   weekDays.forEach((day, index) => {
     const date = new Date(startOfWeek)
     date.setDate(startOfWeek.getDate() + index)
-    const dateStr = date.toISOString().split('T')[0] // 'YYYY-MM-DD'格式
+    const dateStr = date.toISOString().split('T')[0]
     const dayCourses = courses[day] || []
-
-    let englishHours = 2
-    let theme = '学习日'
-    let themeColor = 'blue'
-
-    if (index === 4) { // 周五
-      theme = '复习日'
-      themeColor = 'orange'
-      englishHours = 3
-    } else if (index === 5) { // 周六
-      theme = '休息日'
-      themeColor = 'teal'
-      englishHours = 0
-    } else if (index === 6) { // 周日
-      theme = '自由安排'
-      themeColor = 'purple'
-      englishHours = 1
-    }
-
-    const timeBlocks = []
-
-    // 基础作息
-    timeBlocks.push({ time: '07:00-07:30', content: '起床洗漱', type: 'break' })
-    timeBlocks.push({ time: '07:30-08:00', content: '早饭', type: 'break' })
-
-    // 添加上午课程
-    if (dayCourses.length > 0) {
-      dayCourses.forEach(course => {
-        const [startTime] = course.time.split('-')
-        const [startHour] = startTime.split(':').map(Number)
-        if (startHour < 12) {
-          timeBlocks.push({
-            time: course.time,
-            content: course.course,
-            location: course.location,
-            type: 'class'
-          })
-        }
-      })
-    }
-
-    timeBlocks.push({ time: '12:00-13:00', content: '午饭', type: 'break' })
-    timeBlocks.push({ time: '13:00-14:00', content: '午休', type: 'break' })
-
-    // 添加下午课程
-    if (dayCourses.length > 0) {
-      dayCourses.forEach(course => {
-        const [startTime] = course.time.split('-')
-        const [startHour] = startTime.split(':').map(Number)
-        if (startHour >= 12 && startHour < 18) {
-          timeBlocks.push({
-            time: course.time,
-            content: course.course,
-            location: course.location,
-            type: 'class'
-          })
-        }
-      })
-    }
-
-    timeBlocks.push({ time: '18:00-19:00', content: '晚饭', type: 'break' })
-
-    if (englishHours > 0) {
-      timeBlocks.push({ time: '19:00-21:00', content: '英语学习', detail: '背单词+阅读+听力', type: 'study' })
-    } else {
-      timeBlocks.push({ time: '19:00-21:00', content: '自由安排', type: 'break' })
-    }
-
-    timeBlocks.push({ time: '22:30-23:00', content: '洗漱准备睡觉', type: 'break' })
-    timeBlocks.push({ time: '23:00-07:00', content: '睡觉', type: 'break' })
-
-    dailySchedule[day] = {
-      date: dateStr,
-      dayOfWeek: day,
-      theme: theme,
-      themeColor: themeColor,
-      timeBlocks: timeBlocks,
-      focusGoal: index < 5 ? '英语学习' : (index === 5 ? '休息放松' : '自由安排'),
-      englishTarget: englishHours
-    }
+    
+    dailySchedule[day] = generateDaySchedule(day, dateStr, dayCourses, index)
   })
 
   const weeklyPlan = {
@@ -158,20 +181,21 @@ async function generateWeeklyPlan() {
       endDate: new Date(startOfWeek.getTime() + 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       goals: [
         { id: 'g1', text: '英语六级考试冲刺', progress: 10, deadline: '2026-06-13', type: 'exam' },
-        { id: 'g2', text: '每天英语学习2小时', progress: 0, type: 'study' }
+        { id: 'g2', text: '每天英语学习2.5小时', progress: 0, type: 'study' }
       ],
       longTermGoals: longTermGoals,
       dailySchedule: dailySchedule,
       notes: [
-        '英语学习每天约2小时，合理安排',
-        '保证充足睡眠，23:00前睡觉',
-        '每天吃早饭，保持健康'
+        '英语学习每天约2.5小时，合理安排',
+        '保证充足睡眠，22:30前睡觉',
+        '每天吃早饭，保持健康',
+        '课余时间充分利用，提升技能'
       ],
       weeklyReview: {
         lastWeekSummary: '继续六级冲刺和日常学习',
-        thisWeekFocus: '英语学习',
+        thisWeekFocus: '英语学习 + 技能提升',
         nextWeekGoals: '持续学习',
-        totalEnglishHours: 10,
+        totalEnglishHours: 17.5,
         targetHours: 100
       }
     }
@@ -182,6 +206,14 @@ async function generateWeeklyPlan() {
   console.log('  日期:', weeklyPlan.data.startDate, '-', weeklyPlan.data.endDate)
   console.log('  长期目标数量:', longTermGoals.length)
 
+  weekDays.forEach(day => {
+    const blocks = dailySchedule[day].timeBlocks
+    console.log(`\n  ${day} (${dailySchedule[day].date}):`)
+    blocks.forEach(block => {
+      console.log(`    ${block.time} - ${block.content}`)
+    })
+  })
+
   return weeklyPlan
 }
 
@@ -190,8 +222,7 @@ async function updateWeeklyPlan() {
 
   const plan = await generateWeeklyPlan()
 
-  // 先删除旧记录
-  await supabase.from('weekly_plans').delete().neq('id', 0)
+  await supabase.from('weekly_plans').delete().gte('created_at', '2000-01-01')
 
   const { error } = await supabase.from('weekly_plans').insert(plan)
   if (error) {

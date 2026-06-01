@@ -1,42 +1,55 @@
-import { useState, useEffect } from 'react'
-import { Calendar, Target, CheckCircle2, AlertCircle, BookOpen, Brain, GraduationCap, Coffee, Loader2, Sparkles, Clock } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Calendar, Target, CheckCircle2, Circle, AlertCircle, Loader2, Sparkles, Clock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
-const themeColors: Record<string, { bg: string; text: string; border: string; gradient: string; light: string }> = {
-  blue: { bg: 'bg-gradient-to-br from-blue-400 to-indigo-500', text: 'text-blue-600', border: 'border-blue-200', gradient: 'from-blue-500 to-indigo-600', light: 'bg-blue-50' },
-  red: { bg: 'bg-gradient-to-br from-rose-400 to-red-500', text: 'text-rose-600', border: 'border-rose-200', gradient: 'from-rose-500 to-red-600', light: 'bg-red-50' },
-  green: { bg: 'bg-gradient-to-br from-emerald-400 to-green-500', text: 'text-emerald-600', border: 'border-emerald-200', gradient: 'from-emerald-500 to-green-600', light: 'bg-green-50' },
-  orange: { bg: 'bg-gradient-to-br from-amber-400 to-orange-500', text: 'text-amber-600', border: 'border-amber-200', gradient: 'from-amber-500 to-orange-600', light: 'bg-orange-50' },
-  purple: { bg: 'bg-gradient-to-br from-violet-400 to-purple-500', text: 'text-violet-600', border: 'border-violet-200', gradient: 'from-violet-500 to-purple-600', light: 'bg-purple-50' },
-  teal: { bg: 'bg-gradient-to-br from-teal-400 to-cyan-500', text: 'text-teal-600', border: 'border-teal-200', gradient: 'from-teal-500 to-cyan-600', light: 'bg-teal-50' },
-  pink: { bg: 'bg-gradient-to-br from-pink-400 to-fuchsia-500', text: 'text-pink-600', border: 'border-pink-200', gradient: 'from-pink-500 to-fuchsia-600', light: 'bg-pink-50' },
+interface TimeBlock {
+  time: string
+  content: string
+  detail?: string
+  location?: string
+  type: string
 }
 
-const typeIcons = {
-  class: BookOpen,
-  study: Brain,
-  exam: GraduationCap,
-  break: Coffee,
-  task: Target,
+interface CompletionRecord {
+  planDate: string
+  timeblockIndex: number
+  completed: boolean
+  completedAt?: string | null
+}
+
+const themeColors: Record<string, { bg: string; text: string; border: string; gradient: string; light: string; dark: string }> = {
+  blue: { bg: 'bg-gradient-to-br from-blue-400 to-indigo-500', text: 'text-blue-600', border: 'border-blue-200', gradient: 'from-blue-500 to-indigo-600', light: 'bg-blue-50', dark: 'bg-blue-600' },
+  red: { bg: 'bg-gradient-to-br from-rose-400 to-red-500', text: 'text-rose-600', border: 'border-rose-200', gradient: 'from-rose-500 to-red-600', light: 'bg-rose-50', dark: 'bg-rose-600' },
+  green: { bg: 'bg-gradient-to-br from-emerald-400 to-green-500', text: 'text-emerald-600', border: 'border-emerald-200', gradient: 'from-emerald-500 to-green-600', light: 'bg-emerald-50', dark: 'bg-emerald-600' },
+  orange: { bg: 'bg-gradient-to-br from-amber-400 to-orange-500', text: 'text-amber-600', border: 'border-amber-200', gradient: 'from-amber-500 to-orange-600', light: 'bg-amber-50', dark: 'bg-amber-600' },
+  purple: { bg: 'bg-gradient-to-br from-violet-400 to-purple-500', text: 'text-violet-600', border: 'border-violet-200', gradient: 'from-violet-500 to-purple-600', light: 'bg-violet-50', dark: 'bg-violet-600' },
+  teal: { bg: 'bg-gradient-to-br from-teal-400 to-cyan-500', text: 'text-teal-600', border: 'border-teal-200', gradient: 'from-teal-500 to-cyan-600', light: 'bg-teal-50', dark: 'bg-teal-600' },
+  pink: { bg: 'bg-gradient-to-br from-pink-400 to-fuchsia-500', text: 'text-pink-600', border: 'border-pink-200', gradient: 'from-pink-500 to-fuchsia-600', light: 'bg-pink-50', dark: 'bg-pink-600' },
+}
+
+const typeLabels = {
+  class: '课程',
+  study: '学习',
+  exam: '考试',
+  break: '休息',
+  task: '任务',
 }
 
 export default function WeeklyPlanPage() {
   const [weeklyPlan, setWeeklyPlan] = useState<any>(null)
-  const [selectedDay, setSelectedDay] = useState<string>('')
-  const [expandedDay, setExpandedDay] = useState<string | null>(null)
+  const [selectedDay, setSelectedDay] = useState<string>('周一')
+  const [expandedDay, setExpandedDay] = useState<string | null>('周一')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [completions, setCompletions] = useState<CompletionRecord[]>([])
+  const [completingIndex, setCompletingIndex] = useState<number | null>(null)
 
   const today = new Date()
   const dayNames = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
   const todayIndex = (today.getDay() + 6) % 7
   const todayName = dayNames[todayIndex]
 
-  useEffect(() => {
-    loadWeeklyPlan()
-  }, [])
-
-  async function loadWeeklyPlan() {
+  const loadWeeklyPlan = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -55,8 +68,9 @@ export default function WeeklyPlanPage() {
         if (data[0].data?.dailySchedule) {
           const days = Object.keys(data[0].data.dailySchedule)
           if (days.length > 0) {
-            setSelectedDay(days.includes(todayName) ? todayName : days[0])
-            setExpandedDay(days.includes(todayName) ? todayName : days[0])
+            const initialDay = days.includes(todayName) ? todayName : days[0]
+            setSelectedDay(initialDay)
+            setExpandedDay(initialDay)
           }
         }
       }
@@ -66,22 +80,141 @@ export default function WeeklyPlanPage() {
     } finally {
       setLoading(false)
     }
+  }, [todayName])
+
+  const loadCompletions = useCallback(async () => {
+    const { data } = await supabase
+      .from('daily_checkins')
+      .select('*')
+      .order('date', { ascending: false })
+      .limit(30)
+
+    if (data && data.length > 0) {
+      const completionRecords: CompletionRecord[] = []
+      data.forEach((checkin: any) => {
+        if (checkin.data?.completions) {
+          checkin.data.completions.forEach((comp: CompletionRecord) => {
+            completionRecords.push({
+              planDate: checkin.date,
+              timeblockIndex: comp.timeblockIndex,
+              completed: comp.completed,
+              completedAt: comp.completedAt,
+            })
+          })
+        }
+      })
+      setCompletions(completionRecords)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadWeeklyPlan()
+    loadCompletions()
+  }, [loadWeeklyPlan, loadCompletions])
+
+  async function handleToggleCompletion(dayName: string, index: number, block: TimeBlock) {
+    if (completingIndex !== null) return
+    
+    setCompletingIndex(index)
+    
+    const planDate = weeklyPlan?.data?.dailySchedule?.[dayName]?.date
+    if (!planDate) {
+      setCompletingIndex(null)
+      return
+    }
+    
+    const existing = completions.find(c => c.planDate === planDate && c.timeblockIndex === index)
+    const isCompleted = !existing?.completed
+    
+    try {
+      const { data: checkinData } = await supabase
+        .from('daily_checkins')
+        .select('*')
+        .eq('date', planDate)
+        .limit(1)
+
+      let completionsArray = []
+      if (checkinData && checkinData.length > 0) {
+        completionsArray = checkinData[0].data?.completions || []
+      }
+
+      const existingIndex = completionsArray.findIndex(
+        (c: any) => c.timeblockIndex === index
+      )
+      
+      const newCompletion = {
+        planDate,
+        timeblockIndex: index,
+        timeblockTime: block.time,
+        timeblockContent: block.content,
+        timeblockType: block.type,
+        completed: isCompleted,
+        completedAt: isCompleted ? new Date().toISOString() : null,
+      }
+
+      if (existingIndex >= 0) {
+        completionsArray[existingIndex] = newCompletion
+      } else {
+        completionsArray.push(newCompletion)
+      }
+
+      if (checkinData && checkinData.length > 0) {
+        await supabase
+          .from('daily_checkins')
+          .update({
+            data: { ...checkinData[0].data, completions: completionsArray }
+          })
+          .eq('date', planDate)
+      } else {
+        await supabase
+          .from('daily_checkins')
+          .insert({
+            date: planDate,
+            data: { completions: completionsArray }
+          })
+      }
+
+      if (isCompleted) {
+        setCompletions([...completions.filter(c => !(c.planDate === planDate && c.timeblockIndex === index)), newCompletion])
+      } else {
+        setCompletions(completions.filter(c => !(c.planDate === planDate && c.timeblockIndex === index)))
+      }
+    } catch (error) {
+      console.error('保存完成状态失败:', error)
+    } finally {
+      setCompletingIndex(null)
+    }
+  }
+
+  function isBlockCompleted(dayName: string, index: number): boolean {
+    const planDate = weeklyPlan?.data?.dailySchedule?.[dayName]?.date
+    if (!planDate) return false
+    const completion = completions.find(c => c.planDate === planDate && c.timeblockIndex === index)
+    return completion?.completed || false
+  }
+
+  function isTimeBlockPast(timeRange: string, blockDate: string) {
+    const now = new Date()
+    const [endTime] = timeRange.split('-')
+    const [endHours, endMinutes] = endTime.split(':').map(Number)
+    
+    const blockDateObj = new Date(blockDate)
+    blockDateObj.setHours(endHours, endMinutes, 0, 0)
+    
+    return now > blockDateObj
   }
 
   const totalEnglishHours = weeklyPlan?.data?.weeklyReview?.totalEnglishHours || 0
   const targetHours = weeklyPlan?.data?.weeklyReview?.targetHours || 100
   const progress = Math.min(100, Math.round((totalEnglishHours / targetHours) * 100))
 
-  function isTimeBlockPast(timeRange: string, blockDate: string) {
-    const now = new Date();
-    const [endTime] = timeRange.split('-');
-    const [endHours, endMinutes] = endTime.split(':').map(Number);
-    
-    const blockDateObj = new Date(blockDate);
-    blockDateObj.setHours(endHours, endMinutes, 0, 0);
-    
-    return now > blockDateObj;
-  }
+  const selectedDaySchedule = weeklyPlan?.data?.dailySchedule?.[selectedDay]
+  const selectedDayTheme = selectedDaySchedule?.themeColor ? themeColors[selectedDaySchedule.themeColor] : themeColors.blue
+  
+  const completedCount = selectedDaySchedule?.timeBlocks 
+    ? selectedDaySchedule.timeBlocks.filter((_: any, i: number) => isBlockCompleted(selectedDay, i)).length 
+    : 0
+  const totalCount = selectedDaySchedule?.timeBlocks?.length || 0
 
   if (loading) {
     return (
@@ -157,7 +290,7 @@ export default function WeeklyPlanPage() {
       </div>
 
       <div className="max-w-4xl mx-auto pb-32">
-        <div className="bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-3xl p-8 text-white mb-8 shadow-2xl animate-fadeIn overflow-hidden relative">
+        <div className={`${selectedDayTheme.bg} rounded-3xl p-8 text-white mb-8 shadow-2xl animate-fadeIn overflow-hidden relative`}>
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 animate-float"></div>
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2 animate-float" style={{animationDelay: '1s'}}></div>
           
@@ -259,6 +392,8 @@ export default function WeeklyPlanPage() {
               const schedule = weeklyPlan?.data?.dailySchedule?.[day]
               const theme = schedule?.themeColor ? themeColors[schedule.themeColor] : themeColors.blue
               const isToday = day === todayName
+              const isExpanded = expandedDay === day
+              
               return (
                 <button
                   key={day}
@@ -267,7 +402,7 @@ export default function WeeklyPlanPage() {
                     setExpandedDay(day)
                   }}
                   className={`relative p-4 rounded-2xl text-center transition-all duration-300 card-hover ${
-                    expandedDay === day
+                    isExpanded
                       ? `${theme.bg} text-white shadow-lg scale-105`
                       : isToday
                       ? 'bg-gradient-to-br from-blue-100 to-indigo-100 text-blue-700 ring-2 ring-blue-300'
@@ -278,15 +413,15 @@ export default function WeeklyPlanPage() {
                   <div className="font-bold text-lg">{day}</div>
                   {schedule && (
                     <>
-                      <div className={`text-xs mt-2 ${expandedDay === day ? 'font-semibold' : 'text-gray-600'}`}>
-                        {schedule.date}
+                      <div className={`text-xs mt-2 ${isExpanded ? 'font-semibold' : 'text-gray-600'}`}>
+                        {schedule.date?.slice(5)}
                       </div>
-                      <div className={`text-xs mt-1 ${expandedDay === day ? 'font-semibold' : 'text-gray-500'}`}>
+                      <div className={`text-xs mt-1 ${isExpanded ? 'font-semibold' : 'text-gray-500'}`}>
                         {schedule.englishTarget}h
                       </div>
                     </>
                   )}
-                  {isToday && !schedule && (
+                  {isToday && !isExpanded && (
                     <div className="absolute -top-2 -right-2 w-5 h-5 bg-blue-500 rounded-full border-2 border-white shadow"></div>
                   )}
                 </button>
@@ -295,77 +430,95 @@ export default function WeeklyPlanPage() {
           </div>
         </div>
 
-        {selectedDay && weeklyPlan?.data?.dailySchedule?.[selectedDay] && (
+        {selectedDay && selectedDaySchedule && (
           <div className="bg-white rounded-3xl shadow-xl overflow-hidden mb-8 animate-fadeIn stagger-3">
             <div className={`bg-gradient-to-r ${
-              weeklyPlan.data.dailySchedule[selectedDay].themeColor 
-                ? themeColors[weeklyPlan.data.dailySchedule[selectedDay].themeColor].gradient 
+              selectedDaySchedule.themeColor 
+                ? themeColors[selectedDaySchedule.themeColor].gradient 
                 : themeColors.blue.gradient
             } p-8 text-white`}>
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-white/80 text-base mb-1">{selectedDay}</div>
                   <div className="text-3xl font-bold">
-                    {weeklyPlan.data.dailySchedule[selectedDay].date}
+                    {selectedDaySchedule.date}
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="px-4 py-2 bg-white/20 backdrop-blur rounded-2xl text-sm font-semibold">
-                    {weeklyPlan.data.dailySchedule[selectedDay].theme}
+                    {selectedDaySchedule.theme}
                   </span>
+                  {totalCount > 0 && (
+                    <span className="px-4 py-2 bg-white/20 backdrop-blur rounded-2xl text-sm font-semibold flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4" />
+                      {completedCount}/{totalCount}
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="mt-5 flex items-center gap-6 flex-wrap">
                 <span className="text-white/90 flex items-center gap-2">
                   <Target className="w-5 h-5" />
-                  英语目标: {weeklyPlan.data.dailySchedule[selectedDay].englishTarget}h
+                  英语目标: {selectedDaySchedule.englishTarget}h
                 </span>
                 <span className="text-white/40">|</span>
                 <span className="text-white/90">
-                  重点: {weeklyPlan.data.dailySchedule[selectedDay].focusGoal}
+                  重点: {selectedDaySchedule.focusGoal}
                 </span>
               </div>
             </div>
 
             <div className="p-8">
-              {weeklyPlan.data.dailySchedule[selectedDay].timeBlocks && weeklyPlan.data.dailySchedule[selectedDay].timeBlocks.length > 0 ? (
+              {selectedDaySchedule.timeBlocks && selectedDaySchedule.timeBlocks.length > 0 ? (
                 <div className="space-y-4">
-                  {weeklyPlan.data.dailySchedule[selectedDay].timeBlocks.map((block: any, i: number) => {
-                    const Icon = typeIcons[block.type as keyof typeof typeIcons] || Target
+                  {selectedDaySchedule.timeBlocks.map((block: TimeBlock, i: number) => {
                     const blockTheme = block.type === 'class' ? themeColors.blue : 
                                       block.type === 'study' ? themeColors.green : 
                                       block.type === 'exam' ? themeColors.red :
                                       block.type === 'break' ? themeColors.orange :
                                       themeColors.purple
-                    const past = isTimeBlockPast(block.time, weeklyPlan.data.dailySchedule[selectedDay].date)
+                    const past = isTimeBlockPast(block.time, selectedDaySchedule.date)
+                    const completed = isBlockCompleted(selectedDay, i)
+                    
                     return (
                       <div
                         key={i}
                         className={`flex items-start gap-5 p-6 rounded-2xl transition-all duration-300 card-hover ${
-                          past ? 'bg-gray-50 opacity-70' : blockTheme.light
+                          completed 
+                            ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200'
+                            : past 
+                            ? 'bg-gray-50 opacity-70' 
+                            : blockTheme.light
                         } animate-fadeIn`}
                         style={{ animationDelay: `${i * 0.08}s` }}
                       >
-                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-                          block.type === 'class' ? 'bg-blue-100 text-blue-600' : 
-                          block.type === 'study' ? 'bg-green-100 text-green-600' : 
-                          block.type === 'exam' ? 'bg-red-100 text-red-600' :
-                          block.type === 'break' ? 'bg-amber-100 text-amber-600' :
-                          'bg-violet-100 text-violet-600'
-                        }`}>
-                          <Icon size={28} />
-                        </div>
+                        <button
+                          onClick={() => handleToggleCompletion(selectedDay, i, block)}
+                          disabled={completingIndex !== null}
+                          className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+                            completed
+                              ? 'bg-green-500 text-white shadow-lg scale-110'
+                              : past
+                              ? 'bg-gray-200 text-gray-400'
+                              : `${blockTheme.dark} text-white cursor-pointer hover:scale-110`
+                          } ${completingIndex === i ? 'animate-pulse' : ''}`}
+                        >
+                          {completed ? (
+                            <CheckCircle2 size={28} />
+                          ) : (
+                            <Circle size={28} />
+                          )}
+                        </button>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3 mb-2">
                             <span className={`text-lg font-bold ${blockTheme.text}`}>{block.time}</span>
-                            {past && (
-                              <span className="text-xs bg-green-100 text-green-600 px-3 py-1 rounded-full flex items-center gap-1 font-semibold">
-                                <CheckCircle2 size={14} />
-                                已完成
-                              </span>
-                            )}
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${blockTheme.light} ${blockTheme.text}`}>
+                              {typeLabels[block.type as keyof typeof typeLabels] || '任务'}
+                            </span>
                           </div>
-                          <div className="text-gray-800 text-lg font-medium">{block.content}</div>
+                          <div className={`text-gray-800 text-lg font-medium ${completed ? 'line-through text-green-700' : ''}`}>
+                            {block.content}
+                          </div>
                           {block.detail && (
                             <div className="text-gray-600 mt-2">{block.detail}</div>
                           )}

@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
-import { BarChart3, TrendingUp, Target, AlertCircle, Calendar, BookOpen, Flame } from 'lucide-react'
+import { BarChart3, TrendingUp, Target, AlertCircle, Calendar, BookOpen, Flame, CheckCircle2, PieChart } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 interface DailyData {
   date: string
   studyHours: number
   checkinCount: number
+  completedBlocks: number
+  totalBlocks: number
 }
 
 interface GoalProgress {
@@ -13,6 +15,13 @@ interface GoalProgress {
   type: string
   progress: number
   deadline?: string
+}
+
+interface CompletionRecord {
+  planDate: string
+  timeblockIndex: number
+  timeblockType: string
+  completed: boolean
 }
 
 export default function StatsPage() {
@@ -25,6 +34,10 @@ export default function StatsPage() {
   const [loading, setLoading] = useState(true)
   const [lastWeekHours, setLastWeekHours] = useState(0)
   const [thisWeekHours, setThisWeekHours] = useState(0)
+  const [completions, setCompletions] = useState<CompletionRecord[]>([])
+  const [weeklyCompletionRate, setWeeklyCompletionRate] = useState(0)
+  const [typeCompletionRates, setTypeCompletionRates] = useState<Record<string, { completed: number; total: number }>>({})
+  const [dailyCompletionRates, setDailyCompletionRates] = useState<{ date: string; rate: number }[]>([])
 
   useEffect(() => {
     loadStats()
@@ -51,13 +64,25 @@ export default function StatsPage() {
         }
       }
 
+      const allCompletions: CompletionRecord[] = []
       if (checkinData && checkinData.length > 0) {
         let totalHours = 0
         checkinData.forEach(checkin => {
           if (checkin.data?.studyHours) {
             totalHours += checkin.data.studyHours
           }
+          if (checkin.data?.completions) {
+            checkin.data.completions.forEach((comp: CompletionRecord) => {
+              allCompletions.push({
+                planDate: checkin.date,
+                timeblockIndex: comp.timeblockIndex,
+                timeblockType: comp.timeblockType || 'study',
+                completed: comp.completed,
+              })
+            })
+          }
         })
+        setCompletions(allCompletions)
 
         const streak = calculateStreak(checkinData.map(d => d.date))
         const days = checkinData.length
@@ -73,10 +98,15 @@ export default function StatsPage() {
           const dateStr = date.toISOString().split('T')[0]
           const dayData = checkinData.find(d => d.date === dateStr)
           const hours = dayData?.data?.studyHours || 0
+          const dayCompletions = allCompletions.filter(c => c.planDate === dateStr && c.completed)
+          const totalBlocks = allCompletions.filter(c => c.planDate === dateStr).length
+          
           weekly.push({
             date: dateStr,
             studyHours: hours,
             checkinCount: dayData ? 1 : 0,
+            completedBlocks: dayCompletions.length,
+            totalBlocks: totalBlocks,
           })
           
           if (i > 7) {
@@ -85,6 +115,29 @@ export default function StatsPage() {
             thisWeek += hours
           }
         }
+
+        const completionRate = allCompletions.length > 0
+          ? Math.round((allCompletions.filter(c => c.completed).length / allCompletions.length) * 100)
+          : 0
+        setWeeklyCompletionRate(completionRate)
+
+        const typeStats: Record<string, { completed: number; total: number }> = {}
+        allCompletions.forEach(c => {
+          if (!typeStats[c.timeblockType]) {
+            typeStats[c.timeblockType] = { completed: 0, total: 0 }
+          }
+          typeStats[c.timeblockType].total++
+          if (c.completed) {
+            typeStats[c.timeblockType].completed++
+          }
+        })
+        setTypeCompletionRates(typeStats)
+
+        const dailyRates = weekly.map(d => ({
+          date: d.date,
+          rate: d.totalBlocks > 0 ? Math.round((d.completedBlocks / d.totalBlocks) * 100) : 0
+        }))
+        setDailyCompletionRates(dailyRates)
 
         setStreakDays(streak)
         setTotalCheckinDays(days)
@@ -144,6 +197,22 @@ export default function StatsPage() {
 
   const trendChange = lastWeekHours > 0 ? Math.round(((thisWeekHours - lastWeekHours) / lastWeekHours) * 100) : 0
 
+  const typeLabels: Record<string, string> = {
+    class: '课程',
+    study: '学习',
+    exam: '考试',
+    break: '休息',
+    task: '任务',
+  }
+
+  const typeColors: Record<string, string> = {
+    class: 'from-blue-500 to-indigo-500',
+    study: 'from-green-500 to-emerald-500',
+    exam: 'from-red-500 to-rose-500',
+    break: 'from-amber-500 to-orange-500',
+    task: 'from-violet-500 to-purple-500',
+  }
+
   return (
     <div className="min-h-screen py-6 px-4 relative z-10">
       <div className="bg-decorations">
@@ -188,6 +257,48 @@ export default function StatsPage() {
                 <div className="text-3xl font-bold text-green-600">{totalCheckinDays} 天</div>
                 <div className="text-xs text-green-400 mt-1">继续坚持</div>
               </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-5 shadow-sm border border-green-100 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="text-green-500" size={20} />
+                  <span className="font-semibold text-gray-800">时间块完成率</span>
+                </div>
+                <span className="text-xs bg-green-100 text-green-600 px-3 py-1 rounded-full font-medium">
+                  {weeklyCompletionRate}% 完成
+                </span>
+              </div>
+              
+              <div className="h-3 bg-white rounded-full overflow-hidden mb-4">
+                <div 
+                  className="h-full bg-gradient-to-r from-green-500 to-emerald-500 rounded-full transition-all duration-1000"
+                  style={{ width: `${weeklyCompletionRate}%` }}
+                />
+              </div>
+
+              {Object.keys(typeCompletionRates).length > 0 && (
+                <div className="grid grid-cols-2 gap-3 mt-4">
+                  {Object.entries(typeCompletionRates).map(([type, stats]) => {
+                    const rate = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0
+                    return (
+                      <div key={type} className="bg-white/80 rounded-xl p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm text-gray-600">{typeLabels[type] || type}</span>
+                          <span className="text-sm font-medium text-gray-700">{rate}%</span>
+                        </div>
+                        <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full bg-gradient-to-r ${typeColors[type] || 'from-gray-400 to-gray-500'} rounded-full`}
+                            style={{ width: `${rate}%` }}
+                          />
+                        </div>
+                        <div className="text-xs text-gray-400 mt-1">{stats.completed}/{stats.total}</div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-5 shadow-sm border border-blue-100 mb-6">
@@ -278,6 +389,47 @@ export default function StatsPage() {
               </div>
             </div>
 
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 mb-6">
+              <div className="flex items-center gap-2 mb-4">
+                <PieChart className="text-pink-500" size={20} />
+                <h3 className="font-semibold text-gray-800">每日完成率</h3>
+              </div>
+              
+              <div className="space-y-3">
+                {dailyCompletionRates.slice(-7).reverse().map((day, i) => {
+                  const date = new Date(day.date)
+                  const dayLabel = `${date.getMonth() + 1}/${date.getDate()}`
+                  const dayName = ['日', '一', '二', '三', '四', '五', '六'][date.getDay()]
+                  const isToday = day.date === new Date().toISOString().split('T')[0]
+                  
+                  return (
+                    <div key={i} className="flex items-center gap-3">
+                      <span className="text-sm text-gray-500 w-16">{dayLabel} {dayName}</span>
+                      <div className="flex-1 h-4 bg-gray-100 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full rounded-full transition-all ${
+                            isToday 
+                              ? 'bg-gradient-to-r from-pink-500 to-rose-500' 
+                              : day.rate >= 80 
+                              ? 'bg-gradient-to-r from-green-400 to-emerald-500'
+                              : day.rate >= 50
+                              ? 'bg-gradient-to-r from-amber-400 to-orange-500'
+                              : 'bg-gradient-to-r from-gray-300 to-gray-400'
+                          }`}
+                          style={{ width: `${day.rate}%` }}
+                        />
+                      </div>
+                      <span className={`text-sm font-medium w-12 text-right ${
+                        isToday ? 'text-pink-600' : 'text-gray-600'
+                      }`}>
+                        {day.rate}%
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
             {goals.length > 0 && (
               <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 mb-6">
                 <div className="flex items-center gap-2 mb-4">
@@ -317,7 +469,7 @@ export default function StatsPage() {
               </div>
             )}
 
-            {totalCheckinDays === 0 && (
+            {totalCheckinDays === 0 && completions.length === 0 && (
               <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl p-6 border border-yellow-200">
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 bg-yellow-100 rounded-2xl flex items-center justify-center">

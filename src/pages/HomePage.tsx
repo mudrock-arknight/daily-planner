@@ -1,24 +1,41 @@
-import { useState, useEffect } from 'react';
-import { Calendar, Clock, Target, CheckCircle2, AlertCircle, BookOpen, Brain, GraduationCap, Coffee, Sparkles } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Calendar, Clock, Target, CheckCircle2, Circle, AlertCircle, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 
-const themeColors: Record<string, { bg: string; text: string; border: string; gradient: string; light: string }> = {
-  blue: { bg: 'bg-gradient-to-r from-blue-400 to-indigo-500', text: 'text-blue-600', border: 'border-blue-200', gradient: 'from-blue-500 to-indigo-600', light: 'bg-blue-50' },
-  red: { bg: 'bg-gradient-to-r from-rose-400 to-red-500', text: 'text-rose-600', border: 'border-rose-200', gradient: 'from-rose-500 to-red-600', light: 'bg-rose-50' },
-  green: { bg: 'bg-gradient-to-r from-emerald-400 to-green-500', text: 'text-emerald-600', border: 'border-emerald-200', gradient: 'from-emerald-500 to-green-600', light: 'bg-emerald-50' },
-  orange: { bg: 'bg-gradient-to-r from-amber-400 to-orange-500', text: 'text-amber-600', border: 'border-amber-200', gradient: 'from-amber-500 to-orange-600', light: 'bg-amber-50' },
-  purple: { bg: 'bg-gradient-to-r from-violet-400 to-purple-500', text: 'text-violet-600', border: 'border-violet-200', gradient: 'from-violet-500 to-purple-600', light: 'bg-violet-50' },
-  teal: { bg: 'bg-gradient-to-r from-teal-400 to-cyan-500', text: 'text-teal-600', border: 'border-teal-200', gradient: 'from-teal-500 to-cyan-600', light: 'bg-teal-50' },
-  pink: { bg: 'bg-gradient-to-r from-pink-400 to-fuchsia-500', text: 'text-pink-600', border: 'border-pink-200', gradient: 'from-pink-500 to-fuchsia-600', light: 'bg-pink-50' },
+interface TimeBlock {
+  time: string;
+  content: string;
+  detail?: string;
+  location?: string;
+  type: string;
+  completed?: boolean;
+  completedAt?: string;
+}
+
+interface CompletionRecord {
+  planDate: string
+  timeblockIndex: number
+  completed: boolean
+  completedAt?: string | null
+}
+
+const themeColors: Record<string, { bg: string; text: string; border: string; gradient: string; light: string; dark: string }> = {
+  blue: { bg: 'bg-gradient-to-br from-blue-500 to-indigo-600', text: 'text-blue-600', border: 'border-blue-200', gradient: 'from-blue-500 to-indigo-600', light: 'bg-blue-50', dark: 'bg-blue-600' },
+  red: { bg: 'bg-gradient-to-br from-rose-500 to-red-600', text: 'text-rose-600', border: 'border-rose-200', gradient: 'from-rose-500 to-red-600', light: 'bg-rose-50', dark: 'bg-rose-600' },
+  green: { bg: 'bg-gradient-to-br from-emerald-500 to-green-600', text: 'text-emerald-600', border: 'border-emerald-200', gradient: 'from-emerald-500 to-green-600', light: 'bg-emerald-50', dark: 'bg-emerald-600' },
+  orange: { bg: 'bg-gradient-to-br from-amber-500 to-orange-600', text: 'text-amber-600', border: 'border-amber-200', gradient: 'from-amber-500 to-orange-600', light: 'bg-amber-50', dark: 'bg-amber-600' },
+  purple: { bg: 'bg-gradient-to-br from-violet-500 to-purple-600', text: 'text-violet-600', border: 'border-violet-200', gradient: 'from-violet-500 to-purple-600', light: 'bg-violet-50', dark: 'bg-violet-600' },
+  teal: { bg: 'bg-gradient-to-br from-teal-500 to-cyan-600', text: 'text-teal-600', border: 'border-teal-200', gradient: 'from-teal-500 to-cyan-600', light: 'bg-teal-50', dark: 'bg-teal-600' },
+  pink: { bg: 'bg-gradient-to-br from-pink-500 to-fuchsia-600', text: 'text-pink-600', border: 'border-pink-200', gradient: 'from-pink-500 to-fuchsia-600', light: 'bg-pink-50', dark: 'bg-pink-600' },
 };
 
-const typeIcons = {
-  class: BookOpen,
-  study: Brain,
-  exam: GraduationCap,
-  break: Coffee,
-  task: Target,
+const typeLabels = {
+  class: '课程',
+  study: '学习',
+  exam: '考试',
+  break: '休息',
+  task: '任务',
 };
 
 export default function HomePage() {
@@ -26,7 +43,9 @@ export default function HomePage() {
   const [currentTask, setCurrentTask] = useState('');
   const [todaysSchedule, setTodaysSchedule] = useState<any>(null);
   const [weeklyPlan, setWeeklyPlan] = useState<any>(null);
-  const [selectedDay, setSelectedDay] = useState('');
+  const [selectedDay, setSelectedDay] = useState<string>('周一');
+  const [completions, setCompletions] = useState<CompletionRecord[]>([]);
+  const [completingIndex, setCompletingIndex] = useState<number | null>(null);
   const { todos } = useStore();
 
   const today = new Date();
@@ -34,15 +53,7 @@ export default function HomePage() {
   const todayName = dayNames[today.getDay()];
   const formattedDate = `${today.getMonth() + 1}月${today.getDate()}日`;
 
-  useEffect(() => {
-    loadWeeklyPlan();
-    updateCurrentTask();
-    
-    const interval = setInterval(updateCurrentTask, 60000);
-    return () => clearInterval(interval);
-  }, [weeklyPlan]);
-
-  async function loadWeeklyPlan() {
+  const loadWeeklyPlan = useCallback(async () => {
     const { data } = await supabase
       .from('weekly_plans')
       .select('*')
@@ -51,14 +62,171 @@ export default function HomePage() {
     
     if (data && data.length > 0) {
       setWeeklyPlan(data[0]);
-      if (data[0].data && data[0].data.dailySchedule) {
-        setTodaysSchedule(data[0].data.dailySchedule[todayName]);
-        setSelectedDay(todayName);
+      
+      const dailySchedule = data[0].data?.dailySchedule;
+      if (dailySchedule) {
+        const days = Object.keys(dailySchedule);
+        const targetDay = days.includes(todayName) ? todayName : (days[0] || '周一');
+        
+        setSelectedDay(targetDay);
+        setTodaysSchedule(dailySchedule[targetDay]);
       }
+    }
+  }, [todayName]);
+
+  const loadCompletions = useCallback(async () => {
+    const { data } = await supabase
+      .from('daily_checkins')
+      .select('*')
+      .order('date', { ascending: false })
+      .limit(30);
+
+    if (data && data.length > 0) {
+      const completionRecords: CompletionRecord[] = [];
+      data.forEach((checkin: any) => {
+        if (checkin.data?.completions) {
+          checkin.data.completions.forEach((comp: CompletionRecord) => {
+            completionRecords.push({
+              planDate: checkin.date,
+              timeblockIndex: comp.timeblockIndex,
+              completed: comp.completed,
+              completedAt: comp.completedAt,
+            });
+          });
+        }
+      });
+      setCompletions(completionRecords);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadWeeklyPlan();
+    loadCompletions();
+  }, [loadWeeklyPlan, loadCompletions]);
+
+  useEffect(() => {
+    updateCurrentTask();
+    const interval = setInterval(updateCurrentTask, 60000);
+    return () => clearInterval(interval);
+  }, [todaysSchedule]);
+
+  useEffect(() => {
+    if (weeklyPlan?.data?.dailySchedule && selectedDay) {
+      setTodaysSchedule(weeklyPlan.data.dailySchedule[selectedDay]);
+    }
+  }, [selectedDay, weeklyPlan]);
+
+  async function handleToggleCompletion(index: number, block: TimeBlock) {
+    if (completingIndex !== null) return;
+    
+    setCompletingIndex(index);
+    
+    const planDate = todaysSchedule?.date;
+    
+    const existing = completions.find(c => c.planDate === planDate && c.timeblockIndex === index);
+    const isCompleted = !existing?.completed;
+    
+    try {
+      const { data: checkinData } = await supabase
+        .from('daily_checkins')
+        .select('*')
+        .eq('date', planDate)
+        .limit(1);
+
+      let completionsArray = [];
+      if (checkinData && checkinData.length > 0) {
+        completionsArray = checkinData[0].data?.completions || [];
+      }
+
+      const existingIndex = completionsArray.findIndex(
+        (c: any) => c.timeblockIndex === index
+      );
+      
+      const newCompletion = {
+        planDate,
+        timeblockIndex: index,
+        timeblockTime: block.time,
+        timeblockContent: block.content,
+        timeblockType: block.type,
+        completed: isCompleted,
+        completedAt: isCompleted ? new Date().toISOString() : null,
+      };
+
+      if (existingIndex >= 0) {
+        completionsArray[existingIndex] = newCompletion;
+      } else {
+        completionsArray.push(newCompletion);
+      }
+
+      if (checkinData && checkinData.length > 0) {
+        await supabase
+          .from('daily_checkins')
+          .update({
+            data: { ...checkinData[0].data, completions: completionsArray }
+          })
+          .eq('date', planDate);
+      } else {
+        await supabase
+          .from('daily_checkins')
+          .insert({
+            date: planDate,
+            data: { completions: completionsArray }
+          });
+      }
+
+      if (isCompleted) {
+        setCompletions([...completions.filter(c => !(c.planDate === planDate && c.timeblockIndex === index)), newCompletion]);
+      } else {
+        setCompletions(completions.filter(c => !(c.planDate === planDate && c.timeblockIndex === index)));
+      }
+    } catch (error) {
+      console.error('保存完成状态失败:', error);
+    } finally {
+      setCompletingIndex(null);
     }
   }
 
+  function isBlockCompleted(index: number): boolean {
+    const planDate = todaysSchedule?.date;
+    const completion = completions.find(c => c.planDate === planDate && c.timeblockIndex === index);
+    return completion?.completed || false;
+  }
+
   function updateCurrentTask() {
+    if (!todaysSchedule?.timeBlocks) {
+      const now = new Date();
+      const hours = now.getHours();
+      const minutes = now.getMinutes();
+      const totalMinutes = hours * 60 + minutes;
+      
+      let timeBlock = '';
+      let task = '';
+      
+      if (totalMinutes < 510) {
+        timeBlock = '清晨';
+        task = '美好的一天即将开始';
+      } else if (totalMinutes < 720) {
+        timeBlock = '上午';
+        task = '专注学习时间';
+      } else if (totalMinutes < 840) {
+        timeBlock = '午间';
+        task = '享受午餐，适当休息';
+      } else if (totalMinutes < 1080) {
+        timeBlock = '下午';
+        task = '继续努力';
+      } else if (totalMinutes < 1260) {
+        timeBlock = '晚间';
+        task = '晚间学习';
+      } else {
+        timeBlock = '深夜';
+        task = '该休息了，明天见';
+      }
+      
+      setCurrentTimeBlock(timeBlock);
+      setCurrentTask(task);
+      return;
+    }
+
     const now = new Date();
     const hours = now.getHours();
     const minutes = now.getMinutes();
@@ -67,53 +235,27 @@ export default function HomePage() {
     let timeBlock = '';
     let task = '';
 
-    // 从实际的时间块中找到当前对应的任务
-    if (todaysSchedule?.timeBlocks && todaysSchedule.timeBlocks.length > 0) {
-      for (const block of todaysSchedule.timeBlocks) {
-        const [startStr, endStr] = block.time.split('-');
-        if (startStr && endStr) {
-          const [startHour, startMin] = startStr.split(':').map(Number);
-          const [endHour, endMin] = endStr.split(':').map(Number);
-          const startTotal = startHour * 60 + startMin;
-          const endTotal = endHour * 60 + endMin;
-          
-          if (totalMinutes >= startTotal && totalMinutes < endTotal) {
-            task = block.content;
-            // 确定时间段
-            if (startHour < 12) timeBlock = '上午';
-            else if (startHour < 14) timeBlock = '午间';
-            else if (startHour < 18) timeBlock = '下午';
-            else if (startHour < 21) timeBlock = '晚间';
-            else timeBlock = '深夜';
-            break;
-          }
+    for (const block of todaysSchedule.timeBlocks) {
+      const [startStr, endStr] = block.time.split('-');
+      if (startStr && endStr) {
+        const [startHour, startMin] = startStr.split(':').map(Number);
+        const [endHour, endMin] = endStr.split(':').map(Number);
+        const startTotal = startHour * 60 + startMin;
+        const endTotal = endHour * 60 + endMin;
+        
+        if (totalMinutes >= startTotal && totalMinutes < endTotal) {
+          task = block.content;
+          if (startHour < 12) timeBlock = '上午';
+          else if (startHour < 14) timeBlock = '午间';
+          else if (startHour < 18) timeBlock = '下午';
+          else if (startHour < 21) timeBlock = '晚间';
+          else timeBlock = '深夜';
+          break;
         }
       }
-      
-      // 如果没找到匹配，用默认值
-      if (!task) {
-        if (totalMinutes < 510) {
-          timeBlock = '清晨';
-          task = '美好的一天即将开始';
-        } else if (totalMinutes < 720) {
-          timeBlock = '上午';
-          task = '专注学习时间';
-        } else if (totalMinutes < 840) {
-          timeBlock = '午间';
-          task = '享受午餐，适当休息';
-        } else if (totalMinutes < 1080) {
-          timeBlock = '下午';
-          task = '继续努力';
-        } else if (totalMinutes < 1260) {
-          timeBlock = '晚间';
-          task = '晚间学习';
-        } else {
-          timeBlock = '深夜';
-          task = '该休息了，明天见';
-        }
-      }
-    } else {
-      // 没有时间块数据时用默认
+    }
+
+    if (!task) {
       if (totalMinutes < 510) {
         timeBlock = '清晨';
         task = '美好的一天即将开始';
@@ -139,10 +281,6 @@ export default function HomePage() {
     setCurrentTask(task);
   }
 
-  const incompleteTodos = todos.filter(t => !t.completed).slice(0, 3);
-  const currentDaySchedule = weeklyPlan?.data?.dailySchedule?.[selectedDay];
-  const theme = currentDaySchedule?.themeColor ? themeColors[currentDaySchedule.themeColor] : themeColors.blue;
-
   function isTimeBlockPast(timeRange: string, blockDate: string) {
     const now = new Date();
     const [endTime] = timeRange.split('-');
@@ -153,6 +291,15 @@ export default function HomePage() {
     
     return now > blockDateObj;
   }
+
+  const incompleteTodos = todos.filter(t => !t.completed).slice(0, 3);
+  const currentDaySchedule = weeklyPlan?.data?.dailySchedule?.[selectedDay];
+  const theme = currentDaySchedule?.themeColor ? themeColors[currentDaySchedule.themeColor] : themeColors.blue;
+
+  const todayCompletionCount = todaysSchedule?.timeBlocks 
+    ? todaysSchedule.timeBlocks.filter((_: any, i: number) => isBlockCompleted(i)).length 
+    : 0;
+  const todayTotalCount = todaysSchedule?.timeBlocks?.length || 0;
 
   return (
     <div className="min-h-screen py-6 px-4 relative z-10">
@@ -172,7 +319,7 @@ export default function HomePage() {
               <div>
                 <div className="text-white/80 text-sm mb-1 flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
-                  {todayName}
+                  {selectedDay}
                 </div>
                 <div className="text-3xl font-bold">{formattedDate}</div>
               </div>
@@ -195,17 +342,19 @@ export default function HomePage() {
               </div>
             </div>
 
-            {currentDaySchedule && (
-              <div className="mt-4 flex flex-wrap gap-2 animate-fadeIn stagger-2">
+            <div className="mt-4 flex items-center gap-4 animate-fadeIn stagger-2">
+              <div className="flex items-center gap-2">
                 <span className="px-4 py-1.5 bg-white/20 backdrop-blur rounded-full text-sm font-medium">
-                  {currentDaySchedule.theme}
-                </span>
-                <span className="text-white/80 text-sm flex items-center gap-1">
-                  <Target size={14} />
-                  英语目标: {currentDaySchedule.englishTarget}h
+                  {currentDaySchedule?.theme || '学习日'}
                 </span>
               </div>
-            )}
+              {todayTotalCount > 0 && (
+                <div className="flex items-center gap-2 text-sm text-white/90">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>今日完成: {todayCompletionCount}/{todayTotalCount}</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -217,37 +366,35 @@ export default function HomePage() {
               </div>
               每日计划
             </h2>
-            <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-2 px-2">
-              {dayNames.slice(1).map((day, _idx) => {
-                const schedule = weeklyPlan?.data?.dailySchedule?.[day];
-                const dayTheme = schedule?.themeColor ? themeColors[schedule.themeColor] : themeColors.blue;
-                const isSelected = selectedDay === day;
-                
-                return (
-                  <button
-                    key={day}
-                    onClick={() => {
-                      setSelectedDay(day);
-                      setTodaysSchedule(weeklyPlan?.data?.dailySchedule?.[day]);
-                    }}
-                    className={`flex-shrink-0 px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
-                      isSelected 
-                        ? `${dayTheme.bg} text-white shadow-lg scale-105` 
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    {day.slice(1)}
-                  </button>
-                );
-              })}
-            </div>
+          </div>
+          
+          <div className="flex gap-2 overflow-x-auto pb-2 -mx-2 px-2 scrollbar-hide">
+            {dayNames.slice(1).map((day) => {
+              const schedule = weeklyPlan?.data?.dailySchedule?.[day];
+              const dayTheme = schedule?.themeColor ? themeColors[schedule.themeColor] : themeColors.blue;
+              const isSelected = selectedDay === day;
+              
+              return (
+                <button
+                  key={day}
+                  onClick={() => setSelectedDay(day)}
+                  className={`flex-shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${
+                    isSelected 
+                      ? `${dayTheme.bg} text-white shadow-lg scale-105` 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {day}
+                </button>
+              );
+            })}
           </div>
           
           {currentDaySchedule?.timeBlocks ? (
-            <div className="space-y-3">
-              {currentDaySchedule.timeBlocks.map((block: any, i: number) => {
-                const Icon = typeIcons[block.type as keyof typeof typeIcons] || Target;
+            <div className="space-y-3 mt-4">
+              {currentDaySchedule.timeBlocks.map((block: TimeBlock, i: number) => {
                 const past = isTimeBlockPast(block.time, currentDaySchedule.date);
+                const completed = isBlockCompleted(i);
                 const blockTheme = block.type === 'class' ? themeColors.blue : 
                                     block.type === 'study' ? themeColors.green : 
                                     block.type === 'exam' ? themeColors.red :
@@ -258,32 +405,43 @@ export default function HomePage() {
                   <div 
                     key={i} 
                     className={`flex items-start gap-4 p-4 rounded-2xl transition-all duration-300 card-hover ${
-                      past ? 'bg-gray-50 opacity-70' : blockTheme.light
+                      completed 
+                        ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200' 
+                        : past 
+                        ? 'bg-gray-50 opacity-60' 
+                        : blockTheme.light
                     } animate-fadeIn`}
-                    style={{ animationDelay: `${i * 0.1}s` }}
+                    style={{ animationDelay: `${i * 0.05}s` }}
                   >
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                      block.type === 'class' ? 'bg-blue-100 text-blue-600' : 
-                      block.type === 'study' ? 'bg-green-100 text-green-600' : 
-                      block.type === 'exam' ? 'bg-red-100 text-red-600' :
-                      block.type === 'break' ? 'bg-amber-100 text-amber-600' :
-                      'bg-violet-100 text-violet-600'
-                    }`}>
-                      <Icon size={24} />
-                    </div>
+                    <button
+                      onClick={() => handleToggleCompletion(i, block)}
+                      disabled={completingIndex !== null}
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+                        completed
+                          ? 'bg-green-500 text-white shadow-lg scale-110'
+                          : past
+                          ? 'bg-gray-200 text-gray-400'
+                          : `${blockTheme.dark} text-white cursor-pointer hover:scale-110`
+                      } ${completingIndex === i ? 'animate-pulse' : ''}`}
+                    >
+                      {completed ? (
+                        <CheckCircle2 size={22} />
+                      ) : (
+                        <Circle size={22} />
+                      )}
+                    </button>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-1.5">
+                      <div className="flex items-center gap-2 mb-1">
                         <span className={`text-sm font-semibold ${blockTheme.text}`}>{block.time}</span>
-                        {past && (
-                          <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <CheckCircle2 size={12} />
-                            已完成
-                          </span>
-                        )}
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${blockTheme.light} ${blockTheme.text}`}>
+                          {typeLabels[block.type as keyof typeof typeLabels] || '任务'}
+                        </span>
                       </div>
-                      <div className="text-gray-800 font-medium">{block.content}</div>
+                      <div className={`font-medium ${completed ? 'text-green-700 line-through' : 'text-gray-800'}`}>
+                        {block.content}
+                      </div>
                       {block.detail && (
-                        <div className="text-sm text-gray-500 mt-1.5">{block.detail}</div>
+                        <div className="text-sm text-gray-500 mt-1">{block.detail}</div>
                       )}
                       {block.location && (
                         <div className="text-xs text-gray-400 mt-1 flex items-center gap-1">
@@ -398,7 +556,7 @@ export default function HomePage() {
         )}
 
         {weeklyPlan?.data?.longTermGoals && (
-          <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-3xl p-6 shadow-xl animate-fadeIn stagger-4">
+          <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-3xl p-6 shadow-xl mt-6 animate-fadeIn stagger-4">
             <h2 className="font-bold text-gray-800 text-lg mb-4 flex items-center gap-2">
               <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
                 <Sparkles className="text-indigo-600" size={20} />
