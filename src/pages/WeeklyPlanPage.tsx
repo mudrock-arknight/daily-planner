@@ -44,6 +44,7 @@ export default function WeeklyPlanPage() {
   const [error, setError] = useState<string | null>(null)
   const [completions, setCompletions] = useState<CompletionRecord[]>([])
   const [completingIndex, setCompletingIndex] = useState<number | null>(null)
+  const [lastUpdate, setLastUpdate] = useState<number>(Date.now())
 
   const today = new Date()
   const dayNames = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
@@ -112,6 +113,14 @@ export default function WeeklyPlanPage() {
     loadWeeklyPlan()
     loadCompletions()
   }, [loadWeeklyPlan, loadCompletions])
+
+  // 每60秒更新UI，确保时间过期判断实时生效
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLastUpdate(Date.now())
+    }, 60000)
+    return () => clearInterval(interval)
+  }, [])
 
   async function handleToggleCompletion(dayName: string, index: number, block: TimeBlock) {
     if (completingIndex !== null) return
@@ -479,7 +488,7 @@ export default function WeeklyPlanPage() {
 
             <div className="p-8">
               {selectedDaySchedule.timeBlocks && selectedDaySchedule.timeBlocks.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-4" key={lastUpdate}>
                   {selectedDaySchedule.timeBlocks.map((block: TimeBlock, i: number) => {
                     const blockTheme = block.type === 'class' ? themeColors.blue :
                                       block.type === 'study' ? themeColors.green :

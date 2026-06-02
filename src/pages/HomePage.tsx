@@ -48,6 +48,7 @@ export default function HomePage() {
   const [completions, setCompletions] = useState<CompletionRecord[]>([]);
   const [completingIndex, setCompletingIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
   const { todos } = useStore();
 
   const today = new Date();
@@ -114,6 +115,14 @@ export default function HomePage() {
   useEffect(() => {
     Promise.all([loadWeeklyPlan(), loadCompletions()]);
   }, [loadWeeklyPlan, loadCompletions]);
+
+  // 每60秒更新UI，确保时间过期判断实时生效
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLastUpdate(Date.now());
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     updateCurrentTask();
@@ -416,7 +425,7 @@ export default function HomePage() {
           </div>
           
           {currentDaySchedule?.timeBlocks ? (
-            <div className="space-y-3 mt-4">
+            <div className="space-y-3 mt-4" key={lastUpdate}>
               {currentDaySchedule.timeBlocks.map((block: TimeBlock, i: number) => {
                 const planDate = currentDaySchedule.date;
                 const past = isTimeBlockPast(block.time, planDate);
