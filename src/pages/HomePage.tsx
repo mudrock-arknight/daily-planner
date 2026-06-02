@@ -389,6 +389,16 @@ export default function HomePage() {
 
   const incompleteTodos = todos.filter(t => !t.completed).slice(0, 3);
   const currentDaySchedule = weeklyPlan?.data?.dailySchedule?.[selectedDay];
+  
+  // 调试日志：打印整个 dailySchedule 结构
+  console.log('=== 调试 dailySchedule 结构 ===');
+  console.log('weeklyPlan.data:', weeklyPlan?.data);
+  console.log('dailySchedule:', weeklyPlan?.data?.dailySchedule);
+  console.log('dailySchedule keys:', Object.keys(weeklyPlan?.data?.dailySchedule || {}));
+  console.log('selectedDay:', selectedDay);
+  console.log('currentDaySchedule:', currentDaySchedule);
+  console.log('currentDaySchedule.date:', currentDaySchedule?.date);
+  
   const theme = currentDaySchedule?.themeColor ? themeColors[currentDaySchedule.themeColor] : themeColors.blue;
 
   const todayCompletionCount = todaysSchedule?.timeBlocks 
