@@ -36,8 +36,15 @@ const typeLabels = {
   task: '任务',
 }
 
-// 将中文日期格式（如"6月2日"）转换为Date对象
+// 将日期格式转换为Date对象，支持中文格式和ISO格式
 function parseChineseDate(dateStr: string): Date {
+  // 首先尝试ISO格式 (2026-06-05)
+  if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    const [year, month, day] = dateStr.split('-').map(Number)
+    return new Date(year, month - 1, day)
+  }
+  
+  // 然后尝试中文格式 (6月5日)
   const match = dateStr.match(/(\d+)月(\d+)日/)
   if (match) {
     const month = parseInt(match[1], 10)
@@ -45,6 +52,8 @@ function parseChineseDate(dateStr: string): Date {
     const now = new Date()
     return new Date(now.getFullYear(), month - 1, day)
   }
+  
+  // 如果都不是，返回今天
   return new Date()
 }
 
