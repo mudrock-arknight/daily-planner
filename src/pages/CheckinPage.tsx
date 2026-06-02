@@ -37,22 +37,24 @@ export default function CheckinPage() {
       .single()
     
     if (data && data.data) {
-      setCheckin({ ...checkin, ...data.data, id: data.id })
+      // 使用函数式更新避免闭包导致的 stale state
+      setCheckin(prev => ({ ...prev, ...data.data, id: data.id }))
     }
   }
 
   async function handleSave() {
-    const payload = { date: todayStr, data: checkin }
+    // 只保存打卡相关字段，不包含 id/date 等元数据
+    const { id, date, ...checkinData } = checkin
     
     if (checkin.id) {
       await supabase
         .from('daily_checkins')
-        .update({ data: checkin })
+        .update({ data: checkinData })
         .eq('id', checkin.id)
     } else {
       await supabase
         .from('daily_checkins')
-        .insert(payload)
+        .insert({ date: todayStr, data: checkinData })
         .select()
         .single()
     }

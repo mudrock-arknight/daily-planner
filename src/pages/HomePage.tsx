@@ -218,7 +218,7 @@ export default function HomePage() {
       if (checkinData && checkinData.length > 0) {
         await supabase
           .from('daily_checkins')
-          .update({ data: { completions: completionsArray } })
+          .update({ data: { ...checkinData[0].data, completions: completionsArray } })
           .eq('date', planDate);
       } else {
         await supabase
