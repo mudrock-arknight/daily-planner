@@ -450,8 +450,14 @@ export default function HomePage() {
                         )}
                       </button>
                     ) : (
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-gray-100">
-                        <Circle size={22} className="text-gray-300" />
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                        past ? 'bg-green-100' : 'bg-gray-100'
+                      }`}>
+                        {past ? (
+                          <CheckCircle2 size={22} className="text-green-500" />
+                        ) : (
+                          <Circle size={22} className="text-gray-300" />
+                        )}
                       </div>
                     )}
                     <div className="flex-1 min-w-0">

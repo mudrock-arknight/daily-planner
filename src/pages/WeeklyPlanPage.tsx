@@ -513,8 +513,14 @@ export default function WeeklyPlanPage() {
                             )}
                           </button>
                         ) : (
-                          <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 bg-gray-100">
-                            <Circle size={28} className="text-gray-300" />
+                          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                            past ? 'bg-green-100' : 'bg-gray-100'
+                          }`}>
+                            {past ? (
+                              <CheckCircle2 size={28} className="text-green-500" />
+                            ) : (
+                              <Circle size={28} className="text-gray-300" />
+                            )}
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
