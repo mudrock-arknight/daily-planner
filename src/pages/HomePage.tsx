@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Calendar, Clock, Target, CheckCircle2, Circle, AlertCircle, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
@@ -39,6 +39,15 @@ const typeLabels = {
   task: '任务',
 };
 
+// 获取当前日期信息
+function getTodayInfo() {
+  const today = new Date();
+  const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  const todayName = dayNames[today.getDay()];
+  const formattedDate = `${today.getMonth() + 1}月${today.getDate()}日`;
+  return { today, todayName, formattedDate };
+}
+
 export default function HomePage() {
   const [currentTimeBlock, setCurrentTimeBlock] = useState('');
   const [currentTask, setCurrentTask] = useState('');
@@ -51,10 +60,8 @@ export default function HomePage() {
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
   const { todos } = useStore();
 
-  const today = new Date();
-  const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-  const todayName = dayNames[today.getDay()];
-  const formattedDate = `${today.getMonth() + 1}月${today.getDate()}日`;
+  // 使用 useMemo 确保日期信息在每次渲染时更新
+  const { todayName, formattedDate } = useMemo(() => getTodayInfo(), [lastUpdate]);
 
   const loadWeeklyPlan = useCallback(async () => {
     try {
@@ -136,7 +143,7 @@ export default function HomePage() {
     }
   }, [selectedDay, weeklyPlan]);
 
-  async function handleToggleCompletion(index: number, block: TimeBlock) {
+  async function handleToggleCompletion(index: number, _block: TimeBlock) {
     if (completingIndex !== null) return;
     
     setCompletingIndex(index);
@@ -165,9 +172,6 @@ export default function HomePage() {
       const newCompletion = {
         planDate,
         timeblockIndex: index,
-        timeblockTime: block.time,
-        timeblockContent: block.content,
-        timeblockType: block.type,
         completed: isCompleted,
         completedAt: isCompleted ? new Date().toISOString() : null,
       };
@@ -181,9 +185,7 @@ export default function HomePage() {
       if (checkinData && checkinData.length > 0) {
         await supabase
           .from('daily_checkins')
-          .update({
-            data: { ...checkinData[0].data, completions: completionsArray }
-          })
+          .update({ data: { completions: completionsArray } })
           .eq('date', planDate);
       } else {
         await supabase
@@ -227,16 +229,19 @@ export default function HomePage() {
         task = '美好的一天即将开始';
       } else if (totalMinutes < 720) {
         timeBlock = '上午';
-        task = '专注学习时间';
+        task = '上午的课程和学习时间';
       } else if (totalMinutes < 840) {
-        timeBlock = '午间';
-        task = '享受午餐，适当休息';
-      } else if (totalMinutes < 1080) {
+        timeBlock = '中午';
+        task = '午餐和休息时间';
+      } else if (totalMinutes < 1020) {
         timeBlock = '下午';
-        task = '继续努力';
-      } else if (totalMinutes < 1260) {
-        timeBlock = '晚间';
-        task = '晚间学习';
+        task = '下午的课程和学习时间';
+      } else if (totalMinutes < 1140) {
+        timeBlock = '傍晚';
+        task = '晚餐和放松时间';
+      } else if (totalMinutes < 1320) {
+        timeBlock = '晚上';
+        task = '晚间学习时间';
       } else {
         timeBlock = '深夜';
         task = '该休息了，明天见';
@@ -256,41 +261,39 @@ export default function HomePage() {
     let task = '';
 
     for (const block of todaysSchedule.timeBlocks) {
-      const [startStr, endStr] = block.time.split('-');
-      if (startStr && endStr) {
-        const [startHour, startMin] = startStr.split(':').map(Number);
-        const [endHour, endMin] = endStr.split(':').map(Number);
-        const startTotal = startHour * 60 + startMin;
-        const endTotal = endHour * 60 + endMin;
-        
-        if (totalMinutes >= startTotal && totalMinutes < endTotal) {
-          task = block.content;
-          if (startHour < 12) timeBlock = '上午';
-          else if (startHour < 14) timeBlock = '午间';
-          else if (startHour < 18) timeBlock = '下午';
-          else if (startHour < 21) timeBlock = '晚间';
-          else timeBlock = '深夜';
-          break;
-        }
+      const [startTime, endTime] = block.time.split('-');
+      const [startHours, startMinutes] = startTime.split(':').map(Number);
+      const [endHours, endMinutes] = endTime.split(':').map(Number);
+      
+      const startTotal = startHours * 60 + startMinutes;
+      const endTotal = endHours * 60 + endMinutes;
+
+      if (totalMinutes >= startTotal && totalMinutes < endTotal) {
+        timeBlock = block.time;
+        task = block.content;
+        break;
       }
     }
 
-    if (!task) {
+    if (!timeBlock) {
       if (totalMinutes < 510) {
         timeBlock = '清晨';
         task = '美好的一天即将开始';
       } else if (totalMinutes < 720) {
         timeBlock = '上午';
-        task = '专注学习时间';
+        task = '上午的课程和学习时间';
       } else if (totalMinutes < 840) {
-        timeBlock = '午间';
-        task = '享受午餐，适当休息';
-      } else if (totalMinutes < 1080) {
+        timeBlock = '中午';
+        task = '午餐和休息时间';
+      } else if (totalMinutes < 1020) {
         timeBlock = '下午';
-        task = '继续努力';
-      } else if (totalMinutes < 1260) {
-        timeBlock = '晚间';
-        task = '晚间学习';
+        task = '下午的课程和学习时间';
+      } else if (totalMinutes < 1140) {
+        timeBlock = '傍晚';
+        task = '晚餐和放松时间';
+      } else if (totalMinutes < 1320) {
+        timeBlock = '晚上';
+        task = '晚间学习时间';
       } else {
         timeBlock = '深夜';
         task = '该休息了，明天见';
@@ -301,7 +304,8 @@ export default function HomePage() {
     setCurrentTask(task);
   }
 
-  function isTimeBlockPast(timeRange: string, blockDate: string) {
+  // 判断时间块是否已过去（考虑完整日期）
+  function isTimeBlockPast(timeRange: string, blockDate: string): boolean {
     const now = new Date();
     const [, endTime] = timeRange.split('-');
     const [endHours, endMinutes] = endTime.split(':').map(Number);
@@ -312,10 +316,21 @@ export default function HomePage() {
     return now > blockDateObj;
   }
 
+  // 判断时间块日期是否早于今天
+  function isBlockDateBeforeToday(blockDate: string): boolean {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const block = new Date(blockDate);
+    const blockDay = new Date(block.getFullYear(), block.getMonth(), block.getDate());
+    return blockDay < today;
+  }
+
   function effectivelyCompleted(block: TimeBlock, index: number, dayDate: string): boolean {
     if (isBlockCompleted(index, dayDate)) return true;
-    if (block.type !== 'study' && isTimeBlockPast(block.time, dayDate)) {
-      return true;
+    // 非学习类型：如果日期早于今天，或者日期是今天但时间已过，都自动完成
+    if (block.type !== 'study') {
+      if (isBlockDateBeforeToday(dayDate)) return true;
+      if (isTimeBlockPast(block.time, dayDate)) return true;
     }
     return false;
   }
@@ -357,57 +372,61 @@ export default function HomePage() {
                 </div>
                 <div className="text-3xl font-bold">{formattedDate}</div>
               </div>
-              <div className="animate-float">
-                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur">
-                  <Clock size={32} className="text-white" />
+              
+              <div className="text-right">
+                <div className="text-white/80 text-sm mb-1 flex items-center gap-2 justify-end">
+                  <Clock className="w-4 h-4" />
+                  当前时段
                 </div>
+                <div className="text-xl font-semibold">{currentTimeBlock}</div>
               </div>
             </div>
-            
-            <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-5 animate-fadeIn stagger-1">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center">
-                  <Clock className="text-yellow-900" size={20} />
+
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                  <Target className="w-5 h-5" />
                 </div>
-                <div>
-                  <div className="text-white/90 text-sm font-medium">{currentTimeBlock}</div>
-                  <div className="text-white font-semibold text-lg">{currentTask}</div>
+                <div className="flex-1">
+                  <div className="text-white/70 text-sm">当前任务</div>
+                  <div className="font-medium">{currentTask}</div>
                 </div>
               </div>
             </div>
 
-            <div className="mt-4 flex items-center gap-4 animate-fadeIn stagger-2">
-              <div className="flex items-center gap-2">
-                <span className="px-4 py-1.5 bg-white/20 backdrop-blur rounded-full text-sm font-medium">
-                  {currentDaySchedule?.theme || '学习日'}
-                </span>
-              </div>
-              {todayTotalCount > 0 && (
-                <div className="flex items-center gap-2 text-sm text-white/90">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>今日完成: {todayCompletionCount}/{todayTotalCount}</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2">
+                  <div className="text-white/70 text-xs">今日进度</div>
+                  <div className="font-semibold">{todayCompletionCount}/{todayTotalCount}</div>
                 </div>
-              )}
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2">
+                  <div className="text-white/70 text-xs">待办事项</div>
+                  <div className="font-semibold">{incompleteTodos.length} 待办</div>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-yellow-300" />
+                <span className="text-sm">保持专注</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl p-6 shadow-xl mb-6 animate-fadeIn stagger-1">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-bold text-gray-800 text-lg flex items-center gap-2">
-              <div className={`w-10 h-10 ${theme.light} rounded-xl flex items-center justify-center`}>
-                <Calendar className={theme.text} size={20} />
-              </div>
-              每日计划
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-blue-600" />
+              今日计划
             </h2>
+            <span className="text-sm text-gray-500">{selectedDay}</span>
           </div>
-          
-          <div className="flex gap-2 overflow-x-auto pb-2 -mx-2 px-2 scrollbar-hide">
-            {dayNames.slice(1).map((day) => {
-              const schedule = weeklyPlan?.data?.dailySchedule?.[day];
-              const dayTheme = schedule?.themeColor ? themeColors[schedule.themeColor] : themeColors.blue;
+
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {['周一', '周二', '周三', '周四', '周五', '周六', '周日'].map((day) => {
               const isSelected = selectedDay === day;
-              
+              const dayTheme = themeColors[currentDaySchedule?.themeColor || 'blue'];
               return (
                 <button
                   key={day}
@@ -507,169 +526,13 @@ export default function HomePage() {
               })}
             </div>
           ) : (
-            <div className="text-center py-12">
-              <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <AlertCircle className="text-gray-400" size={36} />
-              </div>
-              <p className="text-gray-500 font-medium">暂无今日计划</p>
-              <p className="text-sm text-gray-400 mt-1">快去添加你的计划吧</p>
+            <div className="text-center py-12 bg-gray-50 rounded-2xl">
+              <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+              <p className="text-gray-500">暂无今日计划</p>
+              <p className="text-gray-400 text-sm mt-1">请先在周计划页面创建计划</p>
             </div>
           )}
         </div>
-
-        <div className="bg-white rounded-3xl p-6 shadow-xl mb-6 animate-fadeIn stagger-2">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="font-bold text-gray-800 text-lg flex items-center gap-2">
-              <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-                <CheckCircle2 className="text-blue-600" size={20} />
-              </div>
-              待办事项
-            </h2>
-            <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-              {incompleteTodos.length} 项
-            </span>
-          </div>
-          
-          {incompleteTodos.length > 0 ? (
-            <div className="space-y-3">
-              {incompleteTodos.map((todo, idx) => (
-                <div key={todo.id} className="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl card-hover animate-fadeIn" style={{ animationDelay: `${idx * 0.1}s` }}>
-                  <div className="w-6 h-6 border-2 border-gray-300 rounded-full flex-shrink-0"></div>
-                  <span className="flex-1 text-gray-700">{todo.title}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                <CheckCircle2 className="text-green-500" size={32} />
-              </div>
-              <p className="text-gray-500">没有待办，太完美了！</p>
-            </div>
-          )}
-        </div>
-
-        {weeklyPlan?.data?.goals && (
-          <div className="bg-white rounded-3xl p-6 shadow-xl animate-fadeIn stagger-3">
-            <h2 className="font-bold text-gray-800 text-lg mb-5 flex items-center gap-2">
-              <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center">
-                <Target className="text-purple-600" size={20} />
-              </div>
-              本周目标
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {weeklyPlan.data.goals.slice(0, 4).map((goal: any, idx: number) => (
-                <div 
-                  key={goal.id} 
-                  className={`p-5 rounded-2xl border-2 transition-all duration-300 card-hover ${
-                    goal.type === 'exam' ? 'bg-red-50 border-red-100' :
-                    goal.type === 'study' ? 'bg-green-50 border-green-100' :
-                    'bg-blue-50 border-blue-100'
-                  } animate-fadeIn`}
-                  style={{ animationDelay: `${idx * 0.1}s` }}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <span className="font-semibold text-gray-800 flex-1">{goal.text}</span>
-                    {goal.type === 'exam' && (
-                      <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full font-medium">考试</span>
-                    )}
-                    {goal.type === 'study' && (
-                      <span className="text-xs bg-green-100 text-green-600 px-2 py-1 rounded-full font-medium">学习</span>
-                    )}
-                  </div>
-                  {goal.progress !== undefined && (
-                    <div className="mb-2">
-                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full rounded-full transition-all duration-1000 progress-bar ${
-                            goal.type === 'exam' ? 'bg-gradient-to-r from-red-500 to-rose-500' :
-                            goal.type === 'study' ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
-                            'bg-gradient-to-r from-blue-500 to-indigo-500'
-                          }`}
-                          style={{ width: `${goal.progress}%` }}
-                        />
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1.5">{goal.progress}% 完成</div>
-                    </div>
-                  )}
-                  {goal.deadline && (
-                    <div className="text-xs text-gray-500 flex items-center gap-1">
-                      <Clock size={12} />
-                      截止: {goal.deadline}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {weeklyPlan?.data?.longTermGoals && (
-          <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-3xl p-6 shadow-xl mt-6 animate-fadeIn stagger-4">
-            <h2 className="font-bold text-gray-800 text-lg mb-4 flex items-center gap-2">
-              <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
-                <Sparkles className="text-indigo-600" size={20} />
-              </div>
-              大学长期目标
-            </h2>
-            <div className="grid grid-cols-1 gap-3">
-              {weeklyPlan.data.longTermGoals.map((goal: any, idx: number) => {
-                const categoryColors: Record<string, string> = {
-                  language: 'from-blue-400 to-indigo-500',
-                  tech: 'from-green-400 to-emerald-500',
-                  finance: 'from-amber-400 to-orange-500',
-                  skill: 'from-purple-400 to-pink-500',
-                  hobby: 'from-rose-400 to-red-500'
-                };
-                const categoryBg: Record<string, string> = {
-                  language: 'bg-blue-50',
-                  tech: 'bg-green-50',
-                  finance: 'bg-amber-50',
-                  skill: 'bg-purple-50',
-                  hobby: 'bg-rose-50'
-                };
-                const categoryText: Record<string, string> = {
-                  language: 'text-blue-600',
-                  tech: 'text-green-600',
-                  finance: 'text-amber-600',
-                  skill: 'text-purple-600',
-                  hobby: 'text-rose-600'
-                };
-                
-                return (
-                  <div 
-                    key={goal.id} 
-                    className={`p-4 rounded-xl ${categoryBg[goal.category] || 'bg-gray-50'} border border-transparent transition-all duration-300 card-hover animate-fadeIn`}
-                    style={{ animationDelay: `${idx * 0.05}s` }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className={`w-2 h-8 rounded-full bg-gradient-to-b ${categoryColors[goal.category] || 'bg-gray-400'}`}></span>
-                        <span className="font-medium text-gray-700">{goal.text}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className={`text-xs px-2 py-1 rounded-full ${categoryBg[goal.category] || 'bg-gray-100'} ${categoryText[goal.category] || 'text-gray-600'}`}>
-                          {goal.category === 'language' ? '语言' :
-                           goal.category === 'tech' ? '技术' :
-                           goal.category === 'finance' ? '金融' :
-                           goal.category === 'skill' ? '技能' :
-                           goal.category === 'hobby' ? '爱好' : '其他'}
-                        </span>
-                        <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full rounded-full bg-gradient-to-r ${categoryColors[goal.category] || 'bg-gray-400'}`}
-                            style={{ width: `${goal.progress}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-gray-500 w-8">{goal.progress}%</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </div>
       )}
     </div>
