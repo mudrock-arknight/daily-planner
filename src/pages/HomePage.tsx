@@ -349,12 +349,32 @@ export default function HomePage() {
 
   function effectivelyCompleted(block: TimeBlock, index: number, dayDate: string): boolean {
     if (isBlockCompleted(index, dayDate)) return true;
+    
+    // 调试日志
+    const isBefore = isBlockDateBeforeToday(dayDate);
+    const isToday = isBlockDateToday(dayDate);
+    const isPast = isTimeBlockPast(block.time, dayDate);
+    console.log('=== effectivelyCompleted 调试 ===');
+    console.log('block.content:', block.content);
+    console.log('block.type:', block.type);
+    console.log('dayDate:', dayDate);
+    console.log('isBlockDateBeforeToday:', isBefore);
+    console.log('isBlockDateToday:', isToday);
+    console.log('isTimeBlockPast:', isPast);
+    
     // 非学习类型：如果日期早于今天，或者日期是今天但时间已过，都自动完成
     if (block.type !== 'study') {
-      if (isBlockDateBeforeToday(dayDate)) return true;
+      if (isBefore) {
+        console.log('结果: 自动完成（历史日期）');
+        return true;
+      }
       // 只有当日期是今天时，才检查时间是否已过
-      if (isBlockDateToday(dayDate) && isTimeBlockPast(block.time, dayDate)) return true;
+      if (isToday && isPast) {
+        console.log('结果: 自动完成（今天且时间已过）');
+        return true;
+      }
     }
+    console.log('结果: 不自动完成');
     return false;
   }
 
