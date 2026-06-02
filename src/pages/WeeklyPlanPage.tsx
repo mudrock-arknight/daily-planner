@@ -481,12 +481,13 @@ export default function WeeklyPlanPage() {
                     const past = isTimeBlockPast(block.time, selectedDaySchedule.date)
                     const completed = isBlockCompleted(selectedDay, i)
                     const isCheckable = block.type === 'study' && block.countable !== false
+                    const effectivelyCompleted = completed || (!isCheckable && past)
                     
                     return (
                       <div
                         key={i}
                         className={`flex items-start gap-5 p-6 rounded-2xl transition-all duration-300 card-hover ${
-                          completed 
+                          effectivelyCompleted 
                             ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200'
                             : past 
                             ? 'bg-gray-50 opacity-70' 
@@ -530,7 +531,7 @@ export default function WeeklyPlanPage() {
                               {typeLabels[block.type as keyof typeof typeLabels] || '任务'}
                             </span>
                           </div>
-                          <div className={`text-gray-800 text-lg font-medium ${completed ? 'line-through text-green-700' : ''}`}>
+                          <div className={`text-gray-800 text-lg font-medium ${effectivelyCompleted ? 'line-through text-green-700' : ''}`}>
                             {block.content}
                           </div>
                           {block.detail && (

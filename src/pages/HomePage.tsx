@@ -418,12 +418,13 @@ export default function HomePage() {
                                     block.type === 'break' ? themeColors.orange :
                                     themeColors.purple;
                 const isCheckable = block.type === 'study' && block.countable !== false;
+                const effectivelyCompleted = completed || (!isCheckable && past);
                 
                 return (
                   <div 
                     key={i} 
                     className={`flex items-start gap-4 p-4 rounded-2xl transition-all duration-300 card-hover ${
-                      completed 
+                      effectivelyCompleted 
                         ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200' 
                         : past 
                         ? 'bg-gray-50 opacity-60' 
@@ -467,7 +468,7 @@ export default function HomePage() {
                           {typeLabels[block.type as keyof typeof typeLabels] || '任务'}
                         </span>
                       </div>
-                      <div className={`font-medium ${completed ? 'text-green-700 line-through' : 'text-gray-800'}`}>
+                      <div className={`font-medium ${effectivelyCompleted ? 'text-green-700 line-through' : 'text-gray-800'}`}>
                         {block.content}
                       </div>
                       {block.detail && (
