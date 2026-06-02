@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Calendar, Clock, Target, CheckCircle2, Circle, AlertCircle, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
@@ -39,6 +39,18 @@ const typeLabels = {
   task: '任务',
 };
 
+// 将中文日期格式（如"6月2日"）转换为Date对象
+function parseChineseDate(dateStr: string): Date {
+  const match = dateStr.match(/(\d+)月(\d+)日/);
+  if (match) {
+    const month = parseInt(match[1], 10);
+    const day = parseInt(match[2], 10);
+    const now = new Date();
+    return new Date(now.getFullYear(), month - 1, day);
+  }
+  return new Date();
+}
+
 // 获取当前日期信息
 function getTodayInfo() {
   const today = new Date();
@@ -53,15 +65,12 @@ export default function HomePage() {
   const [currentTask, setCurrentTask] = useState('');
   const [todaysSchedule, setTodaysSchedule] = useState<any>(null);
   const [weeklyPlan, setWeeklyPlan] = useState<any>(null);
-  const [selectedDay, setSelectedDay] = useState<string>('周一');
+  const { today, todayName, formattedDate } = getTodayInfo();
+  const [selectedDay, setSelectedDay] = useState<string>(todayName);
   const [completions, setCompletions] = useState<CompletionRecord[]>([]);
   const [completingIndex, setCompletingIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
   const { todos } = useStore();
-
-  // 使用 useMemo 确保日期信息在每次渲染时更新
-  const { todayName, formattedDate } = useMemo(() => getTodayInfo(), [lastUpdate]);
 
   const loadWeeklyPlan = useCallback(async () => {
     try {
@@ -77,7 +86,28 @@ export default function HomePage() {
         const dailySchedule = data[0].data?.dailySchedule;
         if (dailySchedule) {
           const days = Object.keys(dailySchedule);
-          const targetDay = days.includes(todayName) ? todayName : (days[0] || '周一');
+          
+          console.log('=== 调试日志 ===');
+          console.log('todayName:', todayName);
+          console.log('days:', Object.keys(dailySchedule));
+          
+          // 尝试多种方式找到今天的日期
+          let targetDay = '周一';
+          if (days.includes(todayName)) {
+            // 如果 keys 是 '周一' 格式
+            targetDay = todayName;
+          } else {
+            // 检查是否是 '6月2日' 格式
+            const todayDateStr = `${today.getMonth() + 1}月${today.getDate()}日`;
+            if (days.includes(todayDateStr)) {
+              targetDay = todayDateStr;
+            } else {
+              // 如果都找不到，使用第一个日期
+              targetDay = days[0] || '周一';
+            }
+          }
+          
+          console.log('targetDay:', targetDay);
           
           setSelectedDay(targetDay);
           setTodaysSchedule(dailySchedule[targetDay]);
@@ -88,7 +118,7 @@ export default function HomePage() {
     } finally {
       setLoading(false);
     }
-  }, [todayName]);
+  }, [todayName, today]);
 
   const loadCompletions = useCallback(async () => {
     try {
@@ -123,18 +153,8 @@ export default function HomePage() {
     Promise.all([loadWeeklyPlan(), loadCompletions()]);
   }, [loadWeeklyPlan, loadCompletions]);
 
-  // 每60秒更新UI，确保时间过期判断实时生效
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setLastUpdate(Date.now());
-    }, 60000);
-    return () => clearInterval(interval);
-  }, []);
-
   useEffect(() => {
     updateCurrentTask();
-    const interval = setInterval(updateCurrentTask, 60000);
-    return () => clearInterval(interval);
   }, [todaysSchedule]);
 
   useEffect(() => {
@@ -216,9 +236,8 @@ export default function HomePage() {
 
   function updateCurrentTask() {
     if (!todaysSchedule?.timeBlocks) {
-      const now = new Date();
-      const hours = now.getHours();
-      const minutes = now.getMinutes();
+      const hours = today.getHours();
+      const minutes = today.getMinutes();
       const totalMinutes = hours * 60 + minutes;
       
       let timeBlock = '';
@@ -252,9 +271,8 @@ export default function HomePage() {
       return;
     }
 
-    const now = new Date();
-    const hours = now.getHours();
-    const minutes = now.getMinutes();
+    const hours = today.getHours();
+    const minutes = today.getMinutes();
     const totalMinutes = hours * 60 + minutes;
 
     let timeBlock = '';
@@ -306,23 +324,29 @@ export default function HomePage() {
 
   // 判断时间块是否已过去（考虑完整日期）
   function isTimeBlockPast(timeRange: string, blockDate: string): boolean {
-    const now = new Date();
     const [, endTime] = timeRange.split('-');
     const [endHours, endMinutes] = endTime.split(':').map(Number);
 
-    const blockDateObj = new Date(blockDate);
+    const blockDateObj = parseChineseDate(blockDate);
     blockDateObj.setHours(endHours, endMinutes, 0, 0);
 
-    return now > blockDateObj;
+    return today > blockDateObj;
   }
 
   // 判断时间块日期是否早于今天
   function isBlockDateBeforeToday(blockDate: string): boolean {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const block = new Date(blockDate);
-    const blockDay = new Date(block.getFullYear(), block.getMonth(), block.getDate());
-    return blockDay < today;
+    const blockDateObj = parseChineseDate(blockDate);
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const blockDayStart = new Date(blockDateObj.getFullYear(), blockDateObj.getMonth(), blockDateObj.getDate());
+    return blockDayStart < todayStart;
+  }
+
+  // 判断时间块日期是否是今天
+  function isBlockDateToday(blockDate: string): boolean {
+    const blockDateObj = parseChineseDate(blockDate);
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const blockDayStart = new Date(blockDateObj.getFullYear(), blockDateObj.getMonth(), blockDateObj.getDate());
+    return blockDayStart.getTime() === todayStart.getTime();
   }
 
   function effectivelyCompleted(block: TimeBlock, index: number, dayDate: string): boolean {
@@ -330,7 +354,8 @@ export default function HomePage() {
     // 非学习类型：如果日期早于今天，或者日期是今天但时间已过，都自动完成
     if (block.type !== 'study') {
       if (isBlockDateBeforeToday(dayDate)) return true;
-      if (isTimeBlockPast(block.time, dayDate)) return true;
+      // 只有当日期是今天时，才检查时间是否已过
+      if (isBlockDateToday(dayDate) && isTimeBlockPast(block.time, dayDate)) return true;
     }
     return false;
   }
@@ -444,7 +469,7 @@ export default function HomePage() {
           </div>
           
           {currentDaySchedule?.timeBlocks ? (
-            <div className="space-y-3 mt-4" key={lastUpdate}>
+            <div className="space-y-3 mt-4">
               {currentDaySchedule.timeBlocks.map((block: TimeBlock, i: number) => {
                 const planDate = currentDaySchedule.date;
                 const past = isTimeBlockPast(block.time, planDate);

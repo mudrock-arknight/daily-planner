@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Calendar, Target, CheckCircle2, Circle, AlertCircle, Loader2, Sparkles, Clock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
@@ -36,6 +36,18 @@ const typeLabels = {
   task: '任务',
 }
 
+// 将中文日期格式（如"6月2日"）转换为Date对象
+function parseChineseDate(dateStr: string): Date {
+  const match = dateStr.match(/(\d+)月(\d+)日/)
+  if (match) {
+    const month = parseInt(match[1], 10)
+    const day = parseInt(match[2], 10)
+    const now = new Date()
+    return new Date(now.getFullYear(), month - 1, day)
+  }
+  return new Date()
+}
+
 // 获取当前日期信息
 function getTodayInfo() {
   const today = new Date()
@@ -53,10 +65,8 @@ export default function WeeklyPlanPage() {
   const [error, setError] = useState<string | null>(null)
   const [completions, setCompletions] = useState<CompletionRecord[]>([])
   const [completingIndex, setCompletingIndex] = useState<number | null>(null)
-  const [lastUpdate, setLastUpdate] = useState<number>(Date.now())
 
-  // 使用 useMemo 确保日期信息在每次渲染时更新
-  const { todayName } = useMemo(() => getTodayInfo(), [lastUpdate])
+  const { today, todayName } = getTodayInfo()
 
   const loadWeeklyPlan = useCallback(async () => {
     try {
@@ -120,14 +130,6 @@ export default function WeeklyPlanPage() {
     loadWeeklyPlan()
     loadCompletions()
   }, [loadWeeklyPlan, loadCompletions])
-
-  // 每60秒更新UI，确保时间过期判断实时生效
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setLastUpdate(Date.now())
-    }, 60000)
-    return () => clearInterval(interval)
-  }, [])
 
   async function handleToggleCompletion(dayName: string, index: number, block: TimeBlock) {
     if (completingIndex !== null) return
@@ -211,23 +213,21 @@ export default function WeeklyPlanPage() {
   }
 
   function isTimeBlockPast(timeRange: string, blockDate: string) {
-    const now = new Date()
     const [, endTime] = timeRange.split('-')
     const [endHours, endMinutes] = endTime.split(':').map(Number)
 
-    const blockDateObj = new Date(blockDate)
+    const blockDateObj = parseChineseDate(blockDate)
     blockDateObj.setHours(endHours, endMinutes, 0, 0)
 
-    return now > blockDateObj
+    return today > blockDateObj
   }
 
   // 判断时间块日期是否早于今天
   function isBlockDateBeforeToday(blockDate: string): boolean {
-    const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const block = new Date(blockDate)
-    const blockDay = new Date(block.getFullYear(), block.getMonth(), block.getDate())
-    return blockDay < today
+    const blockDateObj = parseChineseDate(blockDate)
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    const blockDayStart = new Date(blockDateObj.getFullYear(), blockDateObj.getMonth(), blockDateObj.getDate())
+    return blockDayStart < todayStart
   }
 
   function effectivelyCompleted(block: TimeBlock, index: number, dayKey: string, dayDate: string): boolean {
@@ -424,7 +424,7 @@ export default function WeeklyPlanPage() {
                           </div>
                         </div>
 
-                        <div className="space-y-3" key={lastUpdate}>
+                        <div className="space-y-3">
                           {dayData.timeBlocks && dayData.timeBlocks.length > 0 ? (
                             dayData.timeBlocks.map((block: TimeBlock, i: number) => {
                               const blockTheme = block.type === 'class' ? themeColors.blue :
