@@ -230,12 +230,21 @@ export default function WeeklyPlanPage() {
     return blockDayStart < todayStart
   }
 
+  // 判断时间块日期是否是今天
+  function isBlockDateToday(blockDate: string): boolean {
+    const blockDateObj = parseChineseDate(blockDate)
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    const blockDayStart = new Date(blockDateObj.getFullYear(), blockDateObj.getMonth(), blockDateObj.getDate())
+    return blockDayStart.getTime() === todayStart.getTime()
+  }
+
   function effectivelyCompleted(block: TimeBlock, index: number, dayKey: string, dayDate: string): boolean {
     if (isBlockCompleted(dayKey, index)) return true
     // 非学习类型：如果日期早于今天，或者日期是今天但时间已过，都自动完成
     if (block.type !== 'study') {
       if (isBlockDateBeforeToday(dayDate)) return true
-      if (isTimeBlockPast(block.time, dayDate)) return true
+      // 只有当日期是今天时，才检查时间是否已过
+      if (isBlockDateToday(dayDate) && isTimeBlockPast(block.time, dayDate)) return true
     }
     return false
   }
