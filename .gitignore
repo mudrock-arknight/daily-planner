@@ -1,12 +1,22 @@
 # Personal diary directory
 diary/
 
+# Node modules
+node_modules/
+
+# Build output
+dist/
+build/
+
 # Gradle and Android build directories
 .gradle/
-build/
 android/.gradle/
 android/build/
 gradle/
 *.gradle
 *.zip
 
+# Android (Capacitor) - excluded from git
+Android/
+android/
+capacitor/
