@@ -1,1 +1,12 @@
-﻿diary/
+# Personal diary directory
+diary/
+
+# Gradle and Android build directories
+.gradle/
+build/
+android/.gradle/
+android/build/
+gradle/
+*.gradle
+*.zip
+
