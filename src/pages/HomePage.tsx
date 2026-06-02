@@ -197,8 +197,8 @@ export default function HomePage() {
     }
   }
 
-  function isBlockCompleted(index: number): boolean {
-    const planDate = todaysSchedule?.date;
+  function isBlockCompleted(index: number, planDate: string | undefined): boolean {
+    if (!planDate) return false;
     const completion = completions.find(c => c.planDate === planDate && c.timeblockIndex === index);
     return completion?.completed || false;
   }
@@ -304,7 +304,7 @@ export default function HomePage() {
   }
 
   function effectivelyCompleted(block: TimeBlock, index: number, dayDate: string): boolean {
-    if (isBlockCompleted(index)) return true;
+    if (isBlockCompleted(index, dayDate)) return true;
     if (block.type !== 'study' && isTimeBlockPast(block.time, dayDate)) {
       return true;
     }
@@ -316,7 +316,7 @@ export default function HomePage() {
   const theme = currentDaySchedule?.themeColor ? themeColors[currentDaySchedule.themeColor] : themeColors.blue;
 
   const todayCompletionCount = todaysSchedule?.timeBlocks 
-    ? todaysSchedule.timeBlocks.filter((_: any, i: number) => isBlockCompleted(i)).length 
+    ? todaysSchedule.timeBlocks.filter((_: any, i: number) => isBlockCompleted(i, todaysSchedule.date)).length 
     : 0;
   const todayTotalCount = todaysSchedule?.timeBlocks?.length || 0;
 
@@ -418,9 +418,10 @@ export default function HomePage() {
           {currentDaySchedule?.timeBlocks ? (
             <div className="space-y-3 mt-4">
               {currentDaySchedule.timeBlocks.map((block: TimeBlock, i: number) => {
-                const past = isTimeBlockPast(block.time, currentDaySchedule.date);
-                const userCompleted = isBlockCompleted(i);
-                const completed = effectivelyCompleted(block, i, currentDaySchedule.date);
+                const planDate = currentDaySchedule.date;
+                const past = isTimeBlockPast(block.time, planDate);
+                const userCompleted = isBlockCompleted(i, planDate);
+                const completed = effectivelyCompleted(block, i, planDate);
                 const blockTheme = block.type === 'class' ? themeColors.blue :
                                     block.type === 'study' ? themeColors.green :
                                     block.type === 'exam' ? themeColors.red :
