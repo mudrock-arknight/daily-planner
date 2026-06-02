@@ -294,7 +294,8 @@ export default function HomePage() {
 
   function isTimeBlockPast(timeRange: string, blockDate: string) {
     const now = new Date();
-    const [endTime] = timeRange.split('-');
+    const [, endTime] = timeRange.split('-');
+    if (!endTime) return false;
     const [endHours, endMinutes] = endTime.split(':').map(Number);
     
     const blockDateObj = new Date(blockDate);
