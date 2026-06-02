@@ -145,11 +145,13 @@ export default function WeeklyPlanPage() {
     
     setCompletingIndex(index)
     
-    const planDate = weeklyPlan?.data?.dailySchedule?.[dayName]?.date
-    if (!planDate) {
-      setCompletingIndex(null)
-      return
-    }
+    // 根据 startDate 和 dayName 计算正确的日期
+    const dayOrder = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+    const dayIndex = dayOrder.indexOf(dayName);
+    const startDate = weeklyPlan?.data?.startDate ? new Date(weeklyPlan.data.startDate) : new Date();
+    const correctDate = new Date(startDate);
+    correctDate.setDate(startDate.getDate() + dayIndex);
+    const planDate = correctDate.toISOString().split('T')[0];
     
     const existing = completions.find(c => c.planDate === planDate && c.timeblockIndex === index)
     const isCompleted = !existing?.completed
@@ -214,10 +216,19 @@ export default function WeeklyPlanPage() {
     }
   }
 
-  function isBlockCompleted(dayName: string, index: number): boolean {
-    const planDate = weeklyPlan?.data?.dailySchedule?.[dayName]?.date
-    if (!planDate) return false
-    const completion = completions.find(c => c.planDate === planDate && c.timeblockIndex === index)
+  function isBlockCompleted(dayName: string, index: number, planDate?: string): boolean {
+    let actualPlanDate: string | undefined = planDate
+    if (!actualPlanDate) {
+      // 如果没有传入 planDate，计算正确的日期
+      const dayOrder = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+      const dayIndex = dayOrder.indexOf(dayName);
+      const startDate = weeklyPlan?.data?.startDate ? new Date(weeklyPlan.data.startDate) : new Date();
+      const correctDate = new Date(startDate);
+      correctDate.setDate(startDate.getDate() + dayIndex);
+      actualPlanDate = correctDate.toISOString().split('T')[0];
+    }
+    
+    const completion = completions.find(c => c.planDate === actualPlanDate && c.timeblockIndex === index)
     return completion?.completed || false
   }
 
@@ -383,8 +394,16 @@ export default function WeeklyPlanPage() {
               const isExpanded = expandedDay === dayName
               const dayTheme = dayData.themeColor ? themeColors[dayData.themeColor] : themeColors.blue
               
+              // 根据 startDate 和 dayName 计算正确的日期
+              const dayOrder = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+              const dayIndex = dayOrder.indexOf(dayName);
+              const startDate = weeklyPlan?.data?.startDate ? new Date(weeklyPlan.data.startDate) : new Date();
+              const correctDate = new Date(startDate);
+              correctDate.setDate(startDate.getDate() + dayIndex);
+              const correctDateStr = correctDate.toISOString().split('T')[0];
+              
               const dayCompletedCount = dayData.timeBlocks 
-                ? dayData.timeBlocks.filter((_: any, i: number) => isBlockCompleted(dayName, i)).length 
+                ? dayData.timeBlocks.filter((_: any, i: number) => isBlockCompleted(dayName, i, correctDateStr)).length 
                 : 0
               const dayTotalCount = dayData.timeBlocks?.length || 0
               
@@ -408,7 +427,7 @@ export default function WeeklyPlanPage() {
                       </div>
                       <div className="text-left">
                         <div className="font-semibold text-gray-800">{dayName}</div>
-                        <div className="text-sm text-gray-500">{dayData.date}</div>
+                        <div className="text-sm text-gray-500">{correctDateStr}</div>
                       </div>
                     </div>
                     
@@ -450,9 +469,9 @@ export default function WeeklyPlanPage() {
                                                 block.type === 'exam' ? themeColors.red :
                                                 block.type === 'break' ? themeColors.orange :
                                                 themeColors.purple
-                              const past = isTimeBlockPast(block.time, dayData.date)
-                              const userCompleted = isBlockCompleted(dayName, i)
-                              const completed = effectivelyCompleted(block, i, dayName, dayData.date)
+                              const past = isTimeBlockPast(block.time, correctDateStr)
+                              const userCompleted = isBlockCompleted(dayName, i, correctDateStr)
+                              const completed = effectivelyCompleted(block, i, dayName, correctDateStr)
                               const isCheckable = block.type === 'study' && block.countable === true
 
                               return (
