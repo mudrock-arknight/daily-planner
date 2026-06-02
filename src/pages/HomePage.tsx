@@ -82,43 +82,41 @@ export default function HomePage() {
       
       if (data && data.length > 0) {
         setWeeklyPlan(data[0]);
-        
-        const dailySchedule = data[0].data?.dailySchedule;
-        if (dailySchedule) {
-          const days = Object.keys(dailySchedule);
-          
-          console.log('=== 调试日志 ===');
-          console.log('todayName:', todayName);
-          console.log('days:', Object.keys(dailySchedule));
-          
-          // 尝试多种方式找到今天的日期
-          let targetDay = '周一';
-          if (days.includes(todayName)) {
-            // 如果 keys 是 '周一' 格式
-            targetDay = todayName;
-          } else {
-            // 检查是否是 '6月2日' 格式
-            const todayDateStr = `${today.getMonth() + 1}月${today.getDate()}日`;
-            if (days.includes(todayDateStr)) {
-              targetDay = todayDateStr;
-            } else {
-              // 如果都找不到，使用第一个日期
-              targetDay = days[0] || '周一';
-            }
-          }
-          
-          console.log('targetDay:', targetDay);
-          
-          setSelectedDay(targetDay);
-          setTodaysSchedule(dailySchedule[targetDay]);
-        }
       }
     } catch (error) {
       console.error('加载周计划失败:', error);
     } finally {
       setLoading(false);
     }
-  }, [todayName, today]);
+  }, []);
+  
+  // 当weeklyPlan首次加载时，设置默认日期
+  useEffect(() => {
+    if (weeklyPlan?.data?.dailySchedule && !selectedDay) {
+      const dailySchedule = weeklyPlan.data.dailySchedule;
+      const days = Object.keys(dailySchedule);
+      
+      console.log('=== 设置默认日期 ===');
+      console.log('todayName:', todayName);
+      console.log('days:', days);
+      
+      // 尝试多种方式找到今天的日期
+      let targetDay = '周一';
+      if (days.includes(todayName)) {
+        targetDay = todayName;
+      } else {
+        const todayDateStr = `${today.getMonth() + 1}月${today.getDate()}日`;
+        if (days.includes(todayDateStr)) {
+          targetDay = todayDateStr;
+        } else {
+          targetDay = days[0] || '周一';
+        }
+      }
+      
+      console.log('targetDay:', targetDay);
+      setSelectedDay(targetDay);
+    }
+  }, [weeklyPlan, todayName, today]);
 
   const loadCompletions = useCallback(async () => {
     try {
