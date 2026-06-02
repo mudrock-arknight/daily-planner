@@ -47,6 +47,7 @@ export default function HomePage() {
   const [selectedDay, setSelectedDay] = useState<string>('周一');
   const [completions, setCompletions] = useState<CompletionRecord[]>([]);
   const [completingIndex, setCompletingIndex] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
   const { todos } = useStore();
 
   const today = new Date();
@@ -55,54 +56,63 @@ export default function HomePage() {
   const formattedDate = `${today.getMonth() + 1}月${today.getDate()}日`;
 
   const loadWeeklyPlan = useCallback(async () => {
-    const { data } = await supabase
-      .from('weekly_plans')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(1);
-    
-    if (data && data.length > 0) {
-      setWeeklyPlan(data[0]);
+    try {
+      const { data } = await supabase
+        .from('weekly_plans')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1);
       
-      const dailySchedule = data[0].data?.dailySchedule;
-      if (dailySchedule) {
-        const days = Object.keys(dailySchedule);
-        const targetDay = days.includes(todayName) ? todayName : (days[0] || '周一');
+      if (data && data.length > 0) {
+        setWeeklyPlan(data[0]);
         
-        setSelectedDay(targetDay);
-        setTodaysSchedule(dailySchedule[targetDay]);
+        const dailySchedule = data[0].data?.dailySchedule;
+        if (dailySchedule) {
+          const days = Object.keys(dailySchedule);
+          const targetDay = days.includes(todayName) ? todayName : (days[0] || '周一');
+          
+          setSelectedDay(targetDay);
+          setTodaysSchedule(dailySchedule[targetDay]);
+        }
       }
+    } catch (error) {
+      console.error('加载周计划失败:', error);
+    } finally {
+      setLoading(false);
     }
   }, [todayName]);
 
   const loadCompletions = useCallback(async () => {
-    const { data } = await supabase
-      .from('daily_checkins')
-      .select('*')
-      .order('date', { ascending: false })
-      .limit(30);
+    try {
+      const { data } = await supabase
+        .from('daily_checkins')
+        .select('*')
+        .order('date', { ascending: false })
+        .limit(30);
 
-    if (data && data.length > 0) {
-      const completionRecords: CompletionRecord[] = [];
-      data.forEach((checkin: any) => {
-        if (checkin.data?.completions) {
-          checkin.data.completions.forEach((comp: CompletionRecord) => {
-            completionRecords.push({
-              planDate: checkin.date,
-              timeblockIndex: comp.timeblockIndex,
-              completed: comp.completed,
-              completedAt: comp.completedAt,
+      if (data && data.length > 0) {
+        const completionRecords: CompletionRecord[] = [];
+        data.forEach((checkin: any) => {
+          if (checkin.data?.completions) {
+            checkin.data.completions.forEach((comp: CompletionRecord) => {
+              completionRecords.push({
+                planDate: checkin.date,
+                timeblockIndex: comp.timeblockIndex,
+                completed: comp.completed,
+                completedAt: comp.completedAt,
+              });
             });
-          });
-        }
-      });
-      setCompletions(completionRecords);
+          }
+        });
+        setCompletions(completionRecords);
+      }
+    } catch (error) {
+      console.error('加载打卡记录失败:', error);
     }
   }, []);
 
   useEffect(() => {
-    loadWeeklyPlan();
-    loadCompletions();
+    Promise.all([loadWeeklyPlan(), loadCompletions()]);
   }, [loadWeeklyPlan, loadCompletions]);
 
   useEffect(() => {
@@ -310,6 +320,12 @@ export default function HomePage() {
         <div className="bg-decoration-3"></div>
       </div>
 
+      {loading ? (
+        <div className="max-w-2xl mx-auto flex flex-col items-center justify-center min-h-[60vh]">
+          <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+          <p className="text-gray-600 font-medium">加载中...</p>
+        </div>
+      ) : (
       <div className="max-w-2xl mx-auto">
         <div className={`${theme.bg} rounded-3xl p-6 text-white mb-6 shadow-2xl animate-fadeIn overflow-hidden relative`}>
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
@@ -630,6 +646,7 @@ export default function HomePage() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }
