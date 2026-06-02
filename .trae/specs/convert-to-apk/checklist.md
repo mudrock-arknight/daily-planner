@@ -1,0 +1,10 @@
+- [ ] Checkpoint 1: Capacitor依赖安装完成，package.json包含@capacitor/core和@capacitor/cli
+- [ ] Checkpoint 2: capacitor.config.ts配置文件生成并包含正确的appId和webDir
+- [ ] Checkpoint 3: vite.config.ts中base配置已修改为'./'
+- [ ] Checkpoint 4: package.json添加了capacitor相关脚本（capacitor:sync等）
+- [ ] Checkpoint 5: android目录已创建，包含完整的Android项目结构
+- [ ] Checkpoint 6: npm run build执行成功，dist目录包含构建产物
+- [ ] Checkpoint 7: npx cap sync执行成功，资源已同步到Android项目
+- [ ] Checkpoint 8: APK文件生成成功，位于android/app/build/outputs/apk/debug目录
+- [ ] Checkpoint 9: 应用能正常启动，底部导航栏正常工作
+- [ ] Checkpoint 10: 所有页面（计划、打卡、待办、周计划、统计）能正常加载

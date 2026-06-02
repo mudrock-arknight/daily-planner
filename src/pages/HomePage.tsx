@@ -417,7 +417,7 @@ export default function HomePage() {
                                     block.type === 'exam' ? themeColors.red :
                                     block.type === 'break' ? themeColors.orange :
                                     themeColors.purple;
-                const isCheckable = block.type === 'study' && block.countable === true;
+                const isCheckable = block.type === 'study' && block.countable !== false;
                 
                 return (
                   <div 

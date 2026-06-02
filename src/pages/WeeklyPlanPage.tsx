@@ -480,7 +480,7 @@ export default function WeeklyPlanPage() {
                                       themeColors.purple
                     const past = isTimeBlockPast(block.time, selectedDaySchedule.date)
                     const completed = isBlockCompleted(selectedDay, i)
-                    const isCheckable = block.type === 'study' && block.countable === true
+                    const isCheckable = block.type === 'study' && block.countable !== false
                     
                     return (
                       <div
