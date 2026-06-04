@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Save, Star, Moon, Sun, CheckCircle2, Calendar, BookOpen } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { showToast, ToastContainer } from '../components/Toast'
 
 export default function CheckinPage() {
   const today = new Date()
@@ -59,7 +60,7 @@ export default function CheckinPage() {
         .single()
     }
     
-    alert('保存成功！')
+    showToast('保存成功！', 'success')
   }
 
   return (
@@ -222,6 +223,7 @@ export default function CheckinPage() {
           </div>
         </div>
       </div>
+      <ToastContainer />
     </div>
   )
 }

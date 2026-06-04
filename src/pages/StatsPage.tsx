@@ -275,7 +275,7 @@ export default function StatsPage() {
   const daysUntilCET6 = getDaysUntilCET6()
 
   function getDaysUntilCET6(): number {
-    const cet6Date = new Date('2025-06-14')
+    const cet6Date = new Date('2026-06-14')
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     cet6Date.setHours(0, 0, 0, 0)

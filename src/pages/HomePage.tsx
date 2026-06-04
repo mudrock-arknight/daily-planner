@@ -1,104 +1,27 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Calendar, Clock, Target, CheckCircle2, Circle, AlertCircle, Sparkles } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { useWeeklyPlan } from '../hooks/useWeeklyPlan';
 import { useStore } from '../store/useStore';
-
-interface TimeBlock {
-  time: string;
-  content: string;
-  detail?: string;
-  location?: string;
-  type: string;
-  countable?: boolean;
-  completed?: boolean;
-  completedAt?: string;
-}
-
-interface CompletionRecord {
-  planDate: string
-  timeblockIndex: number
-  completed: boolean
-  completedAt?: string | null
-}
-
-const themeColors: Record<string, { bg: string; text: string; border: string; gradient: string; light: string; dark: string }> = {
-  blue: { bg: 'bg-gradient-to-br from-blue-500 to-indigo-600', text: 'text-blue-600', border: 'border-blue-200', gradient: 'from-blue-500 to-indigo-600', light: 'bg-blue-50', dark: 'bg-blue-600' },
-  red: { bg: 'bg-gradient-to-br from-rose-500 to-red-600', text: 'text-rose-600', border: 'border-rose-200', gradient: 'from-rose-500 to-red-600', light: 'bg-rose-50', dark: 'bg-rose-600' },
-  green: { bg: 'bg-gradient-to-br from-emerald-500 to-green-600', text: 'text-emerald-600', border: 'border-emerald-200', gradient: 'from-emerald-500 to-green-600', light: 'bg-emerald-50', dark: 'bg-emerald-600' },
-  orange: { bg: 'bg-gradient-to-br from-amber-500 to-orange-600', text: 'text-amber-600', border: 'border-amber-200', gradient: 'from-amber-500 to-orange-600', light: 'bg-amber-50', dark: 'bg-amber-600' },
-  purple: { bg: 'bg-gradient-to-br from-violet-500 to-purple-600', text: 'text-violet-600', border: 'border-violet-200', gradient: 'from-violet-500 to-purple-600', light: 'bg-violet-50', dark: 'bg-violet-600' },
-  teal: { bg: 'bg-gradient-to-br from-teal-500 to-cyan-600', text: 'text-teal-600', border: 'border-teal-200', gradient: 'from-teal-500 to-cyan-600', light: 'bg-teal-50', dark: 'bg-teal-600' },
-  pink: { bg: 'bg-gradient-to-br from-pink-500 to-fuchsia-600', text: 'text-pink-600', border: 'border-pink-200', gradient: 'from-pink-500 to-fuchsia-600', light: 'bg-pink-50', dark: 'bg-pink-600' },
-};
-
-const typeLabels = {
-  class: '课程',
-  study: '学习',
-  exam: '考试',
-  break: '休息',
-  task: '任务',
-};
-
-// 将日期格式转换为Date对象，支持中文格式和ISO格式
-function parseChineseDate(dateStr: string): Date {
-  // 首先尝试ISO格式 (2026-06-05)
-  if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-    const [year, month, day] = dateStr.split('-').map(Number);
-    return new Date(year, month - 1, day);
-  }
-  
-  // 然后尝试中文格式 (6月5日)
-  const match = dateStr.match(/(\d+)月(\d+)日/);
-  if (match) {
-    const month = parseInt(match[1], 10);
-    const day = parseInt(match[2], 10);
-    const now = new Date();
-    return new Date(now.getFullYear(), month - 1, day);
-  }
-  
-  // 如果都不是，返回今天
-  return new Date();
-}
-
-// 获取当前日期信息
-function getTodayInfo() {
-  const today = new Date();
-  const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-  const todayName = dayNames[today.getDay()];
-  const formattedDate = `${today.getMonth() + 1}月${today.getDate()}日`;
-  return { today, todayName, formattedDate };
-}
+import { TimeBlock, themeColors, typeLabels, getTodayInfo, isTimeBlockPast, effectivelyCompleted, calcCorrectDate } from '../utils/planUtils';
 
 export default function HomePage() {
+  const {
+    weeklyPlan,
+    loading,
+    completingIndex,
+    handleToggleCompletion,
+    isBlockCompleted,
+    loadWeeklyPlan,
+    loadCompletions,
+  } = useWeeklyPlan();
   const [currentTimeBlock, setCurrentTimeBlock] = useState('');
   const [currentTask, setCurrentTask] = useState('');
   const [todaysSchedule, setTodaysSchedule] = useState<any>(null);
-  const [weeklyPlan, setWeeklyPlan] = useState<any>(null);
   const { today, todayName, formattedDate } = getTodayInfo();
   const [selectedDay, setSelectedDay] = useState<string>(todayName);
-  const [completions, setCompletions] = useState<CompletionRecord[]>([]);
-  const [completingIndex, setCompletingIndex] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
   const { todos } = useStore();
 
-  const loadWeeklyPlan = useCallback(async () => {
-    try {
-      const { data } = await supabase
-        .from('weekly_plans')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(1);
-      
-      if (data && data.length > 0) {
-        setWeeklyPlan(data[0]);
-      }
-    } catch (error) {
-      console.error('加载周计划失败:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-  
+
   // 当weeklyPlan首次加载时，设置默认日期
   useEffect(() => {
     if (weeklyPlan?.data?.dailySchedule && !selectedDay) {
@@ -127,34 +50,6 @@ export default function HomePage() {
     }
   }, [weeklyPlan, todayName, today]);
 
-  const loadCompletions = useCallback(async () => {
-    try {
-      const { data } = await supabase
-        .from('daily_checkins')
-        .select('*')
-        .order('date', { ascending: false })
-        .limit(30);
-
-      if (data && data.length > 0) {
-        const completionRecords: CompletionRecord[] = [];
-        data.forEach((checkin: any) => {
-          if (checkin.data?.completions) {
-            checkin.data.completions.forEach((comp: CompletionRecord) => {
-              completionRecords.push({
-                planDate: checkin.date,
-                timeblockIndex: comp.timeblockIndex,
-                completed: comp.completed,
-                completedAt: comp.completedAt,
-              });
-            });
-          }
-        });
-        setCompletions(completionRecords);
-      }
-    } catch (error) {
-      console.error('加载打卡记录失败:', error);
-    }
-  }, []);
 
   useEffect(() => {
     Promise.all([loadWeeklyPlan(), loadCompletions()]);
@@ -170,82 +65,6 @@ export default function HomePage() {
     }
   }, [selectedDay, weeklyPlan]);
 
-  async function handleToggleCompletion(index: number, _block: TimeBlock) {
-    if (completingIndex !== null) return;
-    
-    setCompletingIndex(index);
-    
-    // 根据 startDate 和 selectedDay 计算正确的日期
-    const dayOrder = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
-    const dayIndex = dayOrder.indexOf(selectedDay);
-    const startDate = weeklyPlan?.data?.startDate ? new Date(weeklyPlan.data.startDate) : new Date();
-    const correctDate = new Date(startDate);
-    correctDate.setDate(startDate.getDate() + dayIndex);
-    const planDate = correctDate.toISOString().split('T')[0];
-    
-    const existing = completions.find(c => c.planDate === planDate && c.timeblockIndex === index);
-    const isCompleted = !existing?.completed;
-    
-    try {
-      const { data: checkinData } = await supabase
-        .from('daily_checkins')
-        .select('*')
-        .eq('date', planDate)
-        .limit(1);
-
-      let completionsArray = [];
-      if (checkinData && checkinData.length > 0) {
-        completionsArray = checkinData[0].data?.completions || [];
-      }
-
-      const existingIndex = completionsArray.findIndex(
-        (c: any) => c.timeblockIndex === index
-      );
-      
-      const newCompletion = {
-        planDate,
-        timeblockIndex: index,
-        completed: isCompleted,
-        completedAt: isCompleted ? new Date().toISOString() : null,
-      };
-
-      if (existingIndex >= 0) {
-        completionsArray[existingIndex] = newCompletion;
-      } else {
-        completionsArray.push(newCompletion);
-      }
-
-      if (checkinData && checkinData.length > 0) {
-        await supabase
-          .from('daily_checkins')
-          .update({ data: { ...checkinData[0].data, completions: completionsArray } })
-          .eq('date', planDate);
-      } else {
-        await supabase
-          .from('daily_checkins')
-          .insert({
-            date: planDate,
-            data: { completions: completionsArray }
-          });
-      }
-
-      if (isCompleted) {
-        setCompletions([...completions.filter(c => !(c.planDate === planDate && c.timeblockIndex === index)), newCompletion]);
-      } else {
-        setCompletions(completions.filter(c => !(c.planDate === planDate && c.timeblockIndex === index)));
-      }
-    } catch (error) {
-      console.error('保存完成状态失败:', error);
-    } finally {
-      setCompletingIndex(null);
-    }
-  }
-
-  function isBlockCompleted(index: number, planDate: string | undefined): boolean {
-    if (!planDate) return false;
-    const completion = completions.find(c => c.planDate === planDate && c.timeblockIndex === index);
-    return completion?.completed || false;
-  }
 
   function updateCurrentTask() {
     if (!todaysSchedule?.timeBlocks) {
@@ -335,63 +154,16 @@ export default function HomePage() {
     setCurrentTask(task);
   }
 
-  // 判断时间块是否已过去（考虑完整日期）
-  function isTimeBlockPast(timeRange: string, blockDate: string): boolean {
-    const [, endTime] = timeRange.split('-');
-    const [endHours, endMinutes] = endTime.split(':').map(Number);
-
-    const blockDateObj = parseChineseDate(blockDate);
-    blockDateObj.setHours(endHours, endMinutes, 0, 0);
-
-    return today > blockDateObj;
-  }
-
-  // 判断时间块日期是否早于今天
-  function isBlockDateBeforeToday(blockDate: string): boolean {
-    const blockDateObj = parseChineseDate(blockDate);
-    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const blockDayStart = new Date(blockDateObj.getFullYear(), blockDateObj.getMonth(), blockDateObj.getDate());
-    return blockDayStart < todayStart;
-  }
-
-  // 判断时间块日期是否是今天
-  function isBlockDateToday(blockDate: string): boolean {
-    const blockDateObj = parseChineseDate(blockDate);
-    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const blockDayStart = new Date(blockDateObj.getFullYear(), blockDateObj.getMonth(), blockDateObj.getDate());
-    return blockDayStart.getTime() === todayStart.getTime();
-  }
-
-  function effectivelyCompleted(block: TimeBlock, index: number, dayDate: string): boolean {
-    if (isBlockCompleted(index, dayDate)) return true;
-    
-    const isBefore = isBlockDateBeforeToday(dayDate);
-    const isToday = isBlockDateToday(dayDate);
-    const isPast = isTimeBlockPast(block.time, dayDate);
-    
-    // 非学习类型：如果日期早于今天，或者日期是今天但时间已过，都自动完成
-    if (block.type !== 'study') {
-      if (isBefore) return true;
-      if (isToday && isPast) return true;
-    }
-    return false;
-  }
-
   const incompleteTodos = todos.filter(t => !t.completed).slice(0, 3);
   const currentDaySchedule = weeklyPlan?.data?.dailySchedule?.[selectedDay];
   
   const theme = currentDaySchedule?.themeColor ? themeColors[currentDaySchedule.themeColor] : themeColors.blue;
 
   // 根据 startDate 和 selectedDay 计算正确的日期，用于进度统计
-  const dayOrder = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
-  const dayIndex = dayOrder.indexOf(selectedDay);
-  const startDate = weeklyPlan?.data?.startDate ? new Date(weeklyPlan.data.startDate) : new Date();
-  const correctDate = new Date(startDate);
-  correctDate.setDate(startDate.getDate() + dayIndex);
-  const correctDateStr = correctDate.toISOString().split('T')[0];
+  const correctDateStr = calcCorrectDate(weeklyPlan?.data?.startDate, selectedDay);
 
   const todayCompletionCount = todaysSchedule?.timeBlocks 
-    ? todaysSchedule.timeBlocks.filter((_: any, i: number) => isBlockCompleted(i, correctDateStr)).length 
+    ? todaysSchedule.timeBlocks.filter((_: any, i: number) => isBlockCompleted(correctDateStr, i)).length 
     : 0;
   const todayTotalCount = todaysSchedule?.timeBlocks?.length || 0;
 
@@ -497,18 +269,10 @@ export default function HomePage() {
           {currentDaySchedule?.timeBlocks ? (
             <div className="space-y-3 mt-4">
               {currentDaySchedule.timeBlocks.map((block: TimeBlock, i: number) => {
-                // 根据 startDate 和 selectedDay 计算正确的日期
-                const dayOrder = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
-                const dayIndex = dayOrder.indexOf(selectedDay);
-                const startDate = weeklyPlan?.data?.startDate ? new Date(weeklyPlan.data.startDate) : new Date();
-                const correctDate = new Date(startDate);
-                correctDate.setDate(startDate.getDate() + dayIndex);
-                const correctDateStr = correctDate.toISOString().split('T')[0];
-                
-                const planDate = correctDateStr;
-                const past = isTimeBlockPast(block.time, planDate);
-                const userCompleted = isBlockCompleted(i, planDate);
-                const completed = effectivelyCompleted(block, i, planDate);
+                const planDate = calcCorrectDate(weeklyPlan?.data?.startDate, selectedDay);
+                const past = isTimeBlockPast(block.time, planDate, today);
+                const userCompleted = isBlockCompleted(planDate, i);
+                const completed = effectivelyCompleted(block, i, planDate, today, (idx, pDate) => isBlockCompleted(pDate, idx));
                 const blockTheme = block.type === 'class' ? themeColors.blue :
                                     block.type === 'study' ? themeColors.green :
                                     block.type === 'exam' ? themeColors.red :
@@ -530,7 +294,7 @@ export default function HomePage() {
                   >
                     {isCheckable ? (
                       <button
-                        onClick={() => handleToggleCompletion(i, block)}
+                        onClick={() => handleToggleCompletion(selectedDay, i, block)}
                         disabled={completingIndex !== null}
                         className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
                           userCompleted

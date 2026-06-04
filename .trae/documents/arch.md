@@ -28,14 +28,18 @@ graph TB
 ---
 
 ## 3. Route Definitions
-| Route | Purpose |
-|-------|---------|
-| / | 首页/导航页 |
-| /checkin | 每日打卡页 |
-| /todo | 待办事项页 |
-| /schedule | 课表页 |
-| /weekly | 周度计划页 |
-| /stats | 数据统计页 |
+| Route | Purpose | Navigation Label |
+|-------|---------|-----------------|
+| / | 首页/今日计划页 | 计划 |
+| /checkin | 每日打卡页 | 打卡 |
+| /todo | 待办事项页 | 待办 |
+| /schedule | 课表页 | (隐藏) |
+| /weekly | 周度计划页 | 周计划 |
+| /stats | 数据统计页 | 统计 |
+
+**注意**：
+- 部署使用 GitHub Pages，`basename="/daily-planner"`
+- 完整访问 URL: `https://mudrock-arknight.github.io/daily-planner/`
 
 ---
 
@@ -107,80 +111,46 @@ erDiagram
 
 ### 6.2 数据结构定义
 ```typescript
-interface DailyCheckin {
-  id?: string;
-  date: string;
-  sleepTime: string;
-  wakeTime: string;
-  energyScore: number;
-  moodScore: number;
-  phoneCheck: {
-    noPhoneInBed: boolean;
-    noPhoneFirst: boolean;
-    noTikTok: boolean;
-  };
-  importantTasks: Array&lt;{
-    id: string;
-    text: string;
-    status: 'todo' | 'done' | 'partial';
-  }&gt;;
-  studyTrack: {
-    englishHours: number;
-    wordCount?: number;
-    readingCount?: number;
-    listeningMinutes?: number;
-    writingCount?: number;
-    timeBlocks: Array&lt;{
-      start: string;
-      end: string;
-      content: string;
-    }&gt;;
-  };
-  phoneMonitor: {
-    totalHours: number;
-    tiktokHours: number;
-    gameHours: number;
-    isQualified: boolean;
-    issues: string[];
-  };
-  healthStatus: {
-    exercise: boolean;
-    exerciseType?: string;
-    exerciseMinutes?: number;
-    meals: 'regular' | 'oneMissing' | 'unhealthy';
-    waterEnough: boolean;
-    skincare: boolean;
-    teethCare: boolean;
-  };
-  eveningReview: {
-    achievements: string[];
-    improvements: string[];
-    timeWaste: string;
-    mindset: string;
-    messageToSelf: string;
-  };
-  tomorrowPlan: {
-    tasks: string[];
-    wakeTime: string;
-  };
-  scores: {
-    sleepScore: number;
-    englishScore: number;
-    phoneScore: number;
-    tasksScore: number;
-    moodScore: number;
-    total: number;
-  };
-  created_at?: string;
-  updated_at?: string;
-}
+// --------------- 实际使用的数据结构 ---------------
 
+// 待办事项
 interface TodoItem {
   id?: string;
   title: string;
-  priority: 'high' | 'medium' | 'low';
   completed: boolean;
   created_at?: string;
+}
+
+// 时间块完成记录 (存储在 daily_checkins.data.completions 中)
+interface CompletionRecord {
+  planDate: string;      // ISO日期, e.g. "2026-06-02"
+  timeblockIndex: number;
+  completed: boolean;
+  timestamp?: string;
+}
+
+// 每日打卡记录 (data 字段中包含 completions 数组)
+interface DailyCheckin {
+  id?: string;
+  date: string;
+  data: {
+    sleepTime?: string;
+    wakeTime?: string;
+    energyScore?: number;
+    moodScore?: number;
+    phoneCheck?: any;
+    importantTasks?: any[];
+    studyTrack?: any;
+    phoneMonitor?: any;
+    healthStatus?: any;
+    eveningReview?: any;
+    tomorrowPlan?: any;
+    scores?: any;
+    // 新增：时间块完成记录
+    completions?: CompletionRecord[];
+  };
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface Course {
@@ -191,16 +161,57 @@ interface Course {
   weeks: string;
 }
 
-interface WeeklyPlan {
-  id?: string;
-  week: string;
-  startDate: string;
-  endDate: string;
+// 周度计划 (实际存储在 weekly_plans.data 中)
+interface WeeklyPlanData {
+  startDate: string;      // ISO日期, e.g. "2026-06-02"
+  endDate: string;        // ISO日期, e.g. "2026-06-08"
   goals: Array&lt;{
     id: string;
     text: string;
     progress: number;
+    deadline?: string;
+    type?: 'exam' | 'task' | 'study';
+    totalHours?: number;
   }&gt;;
+  dailySchedule: {
+    [dayName: string]: {   // key: "周一" | "周二" | ... | "周日"
+      date: string;        // 可能是 "6月2日" 或 ISO日期，建议使用 startDate 计算
+      dayOfWeek?: string;
+      theme?: string;
+      themeColor?: 'blue' | 'red' | 'green' | 'orange' | 'purple' | 'teal' | 'pink';
+      focusGoal?: string;
+      englishTarget?: number;
+      timeBlocks: Array&lt;{
+        time: string;       // 格式 "HH:MM-HH:MM"
+        content: string;
+        location?: string;
+        type: 'class' | 'study' | 'exam' | 'break' | 'task';
+        detail?: string;
+        countable?: boolean;
+      }&gt;;
+    };
+  };
+  longTermGoals?: any[];
+  notes?: any[];
+  weeklyReview?: any;
+}
+
+interface WeeklyPlan {
+  id?: string;
+  week: string;
+  data: WeeklyPlanData;  // 所有数据都在这个 JSONB 字段里
+  created_at?: string;
+  updated_at?: string;
+}
+
+// --------------- 已废弃的数据结构 (保留仅参考) ---------------
+// 旧版本的 WeeklyPlan，不再使用
+interface OldWeeklyPlan {
+  id?: string;
+  week: string;
+  startDate: string;
+  endDate: string;
+  goals: Array&lt;{ id: string; text: string; progress: number; }&gt;;
   dailySchedule: Record&lt;string, string&gt;;
   timeBlocks: {
     morning?: { start: string; end: string };
@@ -211,7 +222,23 @@ interface WeeklyPlan {
 }
 ```
 
-### 6.3 DDL 数据库表创建语句
+### 6.3 数据存储方式说明
+
+**重要**: 大多数业务数据存储在 `JSONB` 类型的 `data` 字段中，而非表的独立列。
+
+- `daily_checkins.data`: 存放打卡详情 + 时间块完成记录 `completions`
+- `weekly_plans.data`: 存放完整的周计划内容 (goals, dailySchedule 等)
+
+**时间块自动完成逻辑** (HomePage.tsx / WeeklyPlanPage.tsx):
+- `class` / `exam` / `break` / `task`: 日期 < 今天 或 (日期 == 今天 且 时间已过) → 自动完成
+- `study`: 需用户手动点击完成，不计入自动完成
+
+**日期计算修正** (针对数据库日期可能有误的情况):
+- 使用 `weeklyPlan.data.startDate` 作为基准
+- 根据 `dayName` (周一/周二...) 推算正确的 ISO 日期 (startDate + n 天)
+- 而不是直接使用 `dailySchedule[dayName].date` 字段
+
+### 6.4 DDL 数据库表创建语句
 ```sql
 -- 创建每日打卡表
 CREATE TABLE daily_checkins (
@@ -222,11 +249,10 @@ CREATE TABLE daily_checkins (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 创建待办事项表
+-- 创建待办事项表 (注：实际没有 priority 字段)
 CREATE TABLE todo_items (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     title TEXT NOT NULL,
-    priority TEXT NOT NULL CHECK (priority IN ('high', 'medium', 'low')),
     completed BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -249,6 +275,10 @@ CREATE TABLE weekly_plans (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- 注：没有单独的 timeblock_completions 表
+-- 时间块完成记录存储在 daily_checkins.data.completions 数组中
+```
 
 -- 启用行级安全 (RLS)
 ALTER TABLE daily_checkins ENABLE ROW LEVEL SECURITY;

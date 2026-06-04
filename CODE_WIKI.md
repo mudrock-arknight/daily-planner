@@ -498,33 +498,95 @@ interface AppState {
 
 ---
 
-## 10. 关键工具脚本
+## 10. 关键工具脚本 (Agent 工作流)
 
-项目根目录有多个 Node.js 脚本用于**直接操作 Supabase 数据库** (绕过 RLS, 使用 service_role key):
+项目根目录有多个 Node.js 脚本用于**直接操作 Supabase 数据库** (绕过 RLS, 使用 service_role key)，专门为 AI Agent 设计的工作流。
+
+### 10.1 核心脚本与 Agent 修改计划工作流
+
+| 脚本 | 用途 | 使用场景 |
+|------|------|---------|
+| [update-detailed-plan.mjs](file:///e:/szx/大学生活/daily/update-detailed-plan.mjs) | **更新详细周计划** | Agent 主要修改计划时用 |
+| [generate-plan.js](file:///e:/szx/大学生活/daily/generate-plan.js) | **生成新的周计划 | 全新一周开始时 |
+| [update-weekly-plan.mjs](file:///e:/szx/大学生活/daily/update-weekly-plan.mjs) | 更新周计划 | 补充/调整 |
+| [add-todo.js](file:///e:/szx/大学生活/daily/add-todo.js) | 添加待办 | 快速添加任务 |
+
+### 10.2 脚本工作原理
+
+所有脚本都遵循相同的模式：
+```javascript
+// 1. 导入 supabase 客户端
+import { createClient } from '@supabase/supabase-js'
+
+// 2. 使用 service_role key (硬编码在脚本中，绕过 RLS)
+const SUPABASE_URL = 'https://ptizhibqkhkozakklzqh.supabase.co'
+const SUPABASE_SERVICE_KEY = '...'
+
+// 3. 创建 supabase 客户端
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
+// 4. 直接读写 weekly_plans 表的 data 字段
+```
+
+### 10.3 weekly_plans 表结构 (关键数据结构)
+
+```javascript
+{
+  week: '第14周',
+  data: {
+    startDate: '2026-06-02',
+    endDate: '2026-06-08',
+    goals: [
+      { id: '1', text: '目标描述', progress: 0, deadline: '2026-06-03', type: 'exam' }
+    ],
+    dailySchedule: {
+      '周一': {
+        date: '6月2日',
+        theme: '课程日',
+        themeColor: 'blue',
+        timeBlocks: [
+          { time: '08:30-10:05', content: '概率论', location: '日新楼南408', type: 'class' },
+          { time: '18:30-20:30', content: '英语学习', type: 'study', detail: '背单词1h + 听力真题1套', countable: true }
+        ],
+        focusGoal: '重点目标',
+        englishTarget: 3.5
+      },
+      '周二': { ... },
+      // ... 其他日期
+    },
+    longTermGoals: [ /* 长期目标数组 */
+  ]
+}
+```
+
+### 10.4 时间块类型说明
+
+| type 字段可选值：
+- `class`: 课程（非学习，自动完成）
+- `study`: 学习（需手动勾选，countable=true 计入进度）
+- `exam`: 考试（自动完成）
+- `break`: 休息（自动完成）
+- `task`: 任务（自动完成）
+
+### 10.5 Agent 修改计划步骤
+
+1. **编辑 `update-detailed-plan.mjs` 中的内容
+2. 修改 `weeklyPlan` 对象的 data 字段
+3. 运行 `node update-detailed-plan.mjs`
+4. 等待约 1-2 分钟 GitHub Actions 自动部署后生效
+
+### 10.6 辅助调试脚本
 
 | 脚本 | 用途 |
 |------|------|
-| [add-todo.js](file:///e:/szx/大学生活/daily/add-todo.js) | 添加待办 |
-| [add-data.mjs](file:///e:/szx/大学生活/daily/add-data.mjs) | 通用数据添加 |
-| [add-plan.mjs](file:///e:/szx/大学生活/daily/add-plan.mjs) | 添加周计划 |
-| [add-weekly.mjs](file:///e:/szx/大学生活/daily/add-weekly.mjs) | 添加周计划数据 |
-| [add-columns.mjs](file:///e:/szx/大学生活/daily/add-columns.mjs) | 添加列 |
-| [add-columns-rpc.mjs](file:///e:/szx/大学生活/daily/add-columns-rpc.mjs) | 通过 RPC 添加列 |
-| [update-weekly-plan.mjs](file:///e:/szx/大学生活/daily/update-weekly-plan.mjs) | 更新周计划 |
-| [update-detailed-plan.mjs](file:///e:/szx/大学生活/daily/update-detailed-plan.mjs) | 更新详细计划 |
-| [generate-plan.js](file:///e:/szx/大学生活/daily/generate-plan.js) | 生成计划 |
 | [check-schema.mjs](file:///e:/szx/大学生活/daily/check-schema.mjs) | 检查 schema |
 | [check-columns.mjs](file:///e:/szx/大学生活/daily/check-columns.mjs) | 检查列 |
-| [check-schema-sql.mjs](file:///e:/szx/大学生活/daily/check-schema-sql.mjs) | SQL 检查 schema |
 | [check-table.mjs](file:///e:/szx/大学生活/daily/check-table.mjs) | 检查表 |
-| [query-columns.mjs](file:///e:/szx/大学生活/daily/query-columns.mjs) | 查询列 |
+| [test-insert.mjs](file:///e:/szx/大学生活/daily/test-insert.mjs) | 插入测试 |
 | [fetch-schema.mjs](file:///e:/szx/大学生活/daily/fetch-schema.mjs) | 拉取 schema |
 | [test-supabase.js](file:///e:/szx/大学生活/daily/test-supabase.js) | 连接测试 |
-| [test-supabase.mjs](file:///e:/szx/大学生活/daily/test-supabase.mjs) | 连接测试 |
-| [test-insert.mjs](file:///e:/szx/大学生活/daily/test-insert.mjs) | 插入测试 |
-| [cli.js](file:///e:/szx/大学生活/daily/cli.js) | CLI 工具 |
 
-**典型用途**: 通过 npm 直接 `node add-plan.mjs` 来在终端操作数据库，便于 AI 代理脚本化管理数据 (符合 PRD 中 "AI直接操作数据库" 的 AC-5)。
+**典型用途**: 通过 npm 直接 `node update-detailed-plan.mjs` 来在终端操作数据库，便于 AI 代理脚本化管理数据 (符合 PRD 中 "AI直接操作数据库" 的 AC-5)。
 
 ---
 

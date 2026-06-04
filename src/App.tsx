@@ -6,6 +6,7 @@ import TodoPage from './pages/TodoPage'
 import SchedulePage from './pages/SchedulePage'
 import StatsPage from './pages/StatsPage'
 import WeeklyPlanPage from './pages/WeeklyPlanPage'
+import ErrorBoundary from './components/ErrorBoundary'
 
 function Navbar() {
   const location = useLocation()
@@ -52,14 +53,16 @@ function App() {
   return (
     <Router basename="/daily-planner">
       <div className="min-h-screen bg-gray-50 pb-20">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/checkin" element={<CheckinPage />} />
-          <Route path="/todo" element={<TodoPage />} />
-          <Route path="/schedule" element={<SchedulePage />} />
-          <Route path="/weekly" element={<WeeklyPlanPage />} />
-          <Route path="/stats" element={<StatsPage />} />
-        </Routes>
+        <ErrorBoundary>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/checkin" element={<CheckinPage />} />
+            <Route path="/todo" element={<TodoPage />} />
+            <Route path="/schedule" element={<SchedulePage />} />
+            <Route path="/weekly" element={<WeeklyPlanPage />} />
+            <Route path="/stats" element={<StatsPage />} />
+          </Routes>
+        </ErrorBoundary>
         <Navbar />
       </div>
     </Router>

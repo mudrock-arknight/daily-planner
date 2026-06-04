@@ -1,0 +1,2 @@
+- [说中文](speak-chinese.md) — 所有对话使用中文
+- [代码审查报告](code-review-findings-2026-06-02.md) — 2026年6月2日全面代码审查，含安全、Bug、架构等问题
