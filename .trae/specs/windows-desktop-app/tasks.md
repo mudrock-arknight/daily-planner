@@ -1,6 +1,6 @@
 # Daily Planner - Windows 11 桌面应用转换 - 实现计划
 
-## [ ] Task 1: 在 Windows 文件夹中初始化 Electron 项目
+## [x] Task 1: 在 Windows 文件夹中初始化 Electron 项目
 - **Priority**: P0
 - **Depends On**: None
 - **Description**: 
@@ -11,7 +11,7 @@
   - `programmatic` TR-1.1: Windows/package.json 应包含 electron 和 electron-builder 依赖
 - **Notes**: 保持根目录的 package.json 不受影响
 
-## [ ] Task 2: 创建 Electron 主进程文件
+## [x] Task 2: 创建 Electron 主进程文件
 - **Priority**: P0
 - **Depends On**: Task 1
 - **Description**: 
@@ -24,7 +24,7 @@
   - `programmatic` TR-2.2: 窗口应配置为加载 ../dist/index.html
 - **Notes**: 窗口尺寸设置为 480x800，与移动应用体验一致
 
-## [ ] Task 3: 创建预加载脚本文件
+## [x] Task 3: 创建预加载脚本文件
 - **Priority**: P0
 - **Depends On**: Task 2
 - **Description**: 
@@ -34,7 +34,7 @@
 - **Test Requirements**:
   - `programmatic` TR-3.1: Windows/preload.js 文件应存在并正确配置
 
-## [ ] Task 4: 配置 Electron 构建选项
+## [x] Task 4: 配置 Electron 构建选项
 - **Priority**: P0
 - **Depends On**: Task 3
 - **Description**: 

@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom'
+import { HashRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom'
 import { Home, CheckCircle2, ListTodo, BarChart3, Target } from 'lucide-react'
 import HomePage from './pages/HomePage'
 import CheckinPage from './pages/CheckinPage'
@@ -51,7 +51,7 @@ function Navbar() {
 
 function App() {
   return (
-    <Router basename="/daily-planner">
+    <Router>
       <div className="min-h-screen bg-gray-50 pb-20">
         <ErrorBoundary>
           <Routes>
