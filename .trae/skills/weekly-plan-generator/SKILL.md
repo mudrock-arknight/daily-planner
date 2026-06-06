@@ -56,6 +56,12 @@ Invoke this skill when:
 4. Rest/breaks
 5. Hobbies/leisure
 
+### CRITICAL: Valid themeColor Values
+**MUST only use these values**: `blue`, `red`, `green`, `orange`, `purple`, `teal`, `pink`
+
+**DO NOT use**: `yellow`, `gold`, `gray`, `black`, `white` or any other colors.
+Using invalid values will cause frontend error: "Cannot read properties of undefined (reading 'bg')"
+
 ## Output Format
 
 Generate JSON files saved to `diary/weekly_plans/第X周_YYYYMMDD-YYYYMMDD.json`:
@@ -85,14 +91,16 @@ Generate JSON files saved to `diary/weekly_plans/第X周_YYYYMMDD-YYYYMMDD.json`
 
 ## Time Block Types
 
-| Type | Description | Color Theme |
+| Type | Description | themeColor (MUST use valid values) |
 |------|-------------|-------------|
-| `study` | Study sessions | Blue |
-| `class` | Classes | Orange |
-| `break` | Rest/meals | Green |
-| `task` | Tasks/chores | Gray |
-| `exam` | Exams | Red |
-| `hobby` | Hobbies/music | Purple |
+| `study` | Study sessions | `green` |
+| `class` | Classes | `blue` |
+| `break` | Rest/meals | `orange` |
+| `task` | Tasks/chores | `purple` |
+| `exam` | Exams | `red` |
+| `hobby` | Hobbies/music | `purple` |
+
+**Note**: `themeColor` must be one of: `blue`, `red`, `green`, `orange`, `purple`, `teal`, `pink`
 
 ## Workflow Steps
 
