@@ -11,7 +11,7 @@ export default function HomePage() {
     completingIndex,
     handleToggleCompletion,
     isBlockCompleted,
-    loadWeeklyPlan,
+    loadAllPlans,
     loadCompletions,
   } = useWeeklyPlan();
   const [currentTimeBlock, setCurrentTimeBlock] = useState('');
@@ -52,8 +52,8 @@ export default function HomePage() {
 
 
   useEffect(() => {
-    Promise.all([loadWeeklyPlan(), loadCompletions()]);
-  }, [loadWeeklyPlan, loadCompletions]);
+    Promise.all([loadAllPlans(), loadCompletions()]);
+  }, [loadAllPlans, loadCompletions]);
 
   useEffect(() => {
     updateCurrentTask();
@@ -169,22 +169,15 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen py-6 px-4 relative z-10">
-      <div className="bg-decorations">
-        <div className="bg-decoration-1"></div>
-        <div className="bg-decoration-2"></div>
-        <div className="bg-decoration-3"></div>
-      </div>
 
       {loading ? (
         <div className="max-w-2xl mx-auto flex flex-col items-center justify-center min-h-[60vh]">
           <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
-          <p className="text-gray-600 font-medium">加载中...</p>
+          <p className="text-ink-subtle font-medium">加载中...</p>
         </div>
       ) : (
       <div className="max-w-2xl mx-auto">
-        <div className={`${theme.bg} rounded-3xl p-6 text-white mb-6 shadow-2xl animate-fadeIn overflow-hidden relative`}>
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
-          <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2"></div>
+        <div className={`${theme.bg} rounded-card p-6 text-white mb-6 shadow-2xl overflow-hidden relative`}>
           
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-6">
@@ -205,9 +198,9 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 mb-4">
+            <div className="bg-primary-700/20 rounded-card p-4 mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-btn bg-primary-600/40 flex items-center justify-center">
                   <Target className="w-5 h-5" />
                 </div>
                 <div className="flex-1">
@@ -219,11 +212,11 @@ export default function HomePage() {
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2">
+                <div className="bg-primary-700/20 rounded-btn px-4 py-2">
                   <div className="text-white/70 text-xs">今日进度</div>
                   <div className="font-semibold">{todayCompletionCount}/{todayTotalCount}</div>
                 </div>
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2">
+                <div className="bg-primary-700/20 rounded-btn px-4 py-2">
                   <div className="text-white/70 text-xs">待办事项</div>
                   <div className="font-semibold">{incompleteTodos.length} 待办</div>
                 </div>
@@ -239,11 +232,11 @@ export default function HomePage() {
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-blue-600" />
+            <h2 className="text-xl font-bold text-ink flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-primary-600" />
               今日计划
             </h2>
-            <span className="text-sm text-gray-500">{selectedDay}</span>
+            <span className="text-sm text-ink-subtle">{selectedDay}</span>
           </div>
 
           <div className="flex gap-2 overflow-x-auto pb-2">
@@ -254,10 +247,10 @@ export default function HomePage() {
                 <button
                   key={day}
                   onClick={() => setSelectedDay(day)}
-                  className={`flex-shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${
+                  className={`flex-shrink-0 px-4 py-2.5 rounded-btn text-sm font-medium transition-all duration-300 ${
                     isSelected 
-                      ? `${dayTheme.bg} text-white shadow-lg scale-105` 
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      ? `${dayTheme.bg} text-white shadow-card scale-105` 
+                      : 'bg-surface-hover text-ink-subtle hover:bg-surface-hover'
                   }`}
                 >
                   {day}
@@ -274,33 +267,32 @@ export default function HomePage() {
                 const userCompleted = isBlockCompleted(planDate, i);
                 const completed = effectivelyCompleted(block, i, planDate, today, (idx, pDate) => isBlockCompleted(pDate, idx));
                 const blockTheme = block.type === 'class' ? themeColors.blue :
-                                    block.type === 'study' ? themeColors.green :
-                                    block.type === 'exam' ? themeColors.red :
-                                    block.type === 'break' ? themeColors.orange :
-                                    themeColors.purple;
+                                  block.type === 'study' ? themeColors.green :
+                                  block.type === 'exam' ? themeColors.red :
+                                  block.type === 'break' ? themeColors.orange :
+                                  themeColors.purple;
                 const isCheckable = block.type === 'study' && block.countable === true;
 
                 return (
                   <div
                     key={i}
-                    className={`flex items-start gap-4 p-4 rounded-2xl transition-all duration-300 card-hover ${
+                    className={`flex items-start gap-4 p-4 rounded-card transition-all duration-300 ${
                       completed
-                        ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200'
+                        ? 'bg-green-50 border border-green-200'
                         : past
-                        ? 'bg-gray-50 opacity-60'
+                        ? 'bg-surface opacity-60'
                         : blockTheme.light
-                    } animate-fadeIn`}
-                    style={{ animationDelay: `${i * 0.05}s` }}
+                    }`}
                   >
                     {isCheckable ? (
                       <button
                         onClick={() => handleToggleCompletion(selectedDay, i, block)}
                         disabled={completingIndex !== null}
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+                        className={`w-10 h-10 rounded-btn flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
                           userCompleted
-                            ? 'bg-green-500 text-white shadow-lg scale-110'
+                            ? 'bg-green-500 text-white shadow-card scale-110'
                             : past
-                            ? 'bg-gray-200 text-gray-400'
+                            ? 'bg-surface-hover text-ink-muted'
                             : `${blockTheme.dark} text-white cursor-pointer hover:scale-110`
                         } ${completingIndex === i ? 'animate-pulse' : ''}`}
                       >
@@ -311,13 +303,13 @@ export default function HomePage() {
                         )}
                       </button>
                     ) : (
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                        completed ? 'bg-green-500' : 'bg-gray-100'
+                      <div className={`w-10 h-10 rounded-btn flex items-center justify-center flex-shrink-0 ${
+                        completed ? 'bg-green-500' : 'bg-surface-hover'
                       }`}>
                         {completed ? (
                           <CheckCircle2 size={22} className="text-white" />
                         ) : (
-                          <Circle size={22} className="text-gray-300" />
+                          <Circle size={22} className="text-ink-muted" />
                         )}
                       </div>
                     )}
@@ -328,14 +320,14 @@ export default function HomePage() {
                           {typeLabels[block.type as keyof typeof typeLabels] || '任务'}
                         </span>
                       </div>
-                      <div className={`font-medium ${completed ? 'text-green-700 line-through' : 'text-gray-800'}`}>
+                      <div className={`font-medium ${completed ? 'text-green-700 line-through' : 'text-ink'}`}>
                         {block.content}
                       </div>
                       {block.detail && (
-                        <div className="text-sm text-gray-500 mt-1">{block.detail}</div>
+                        <div className="text-sm text-ink-subtle mt-1">{block.detail}</div>
                       )}
                       {block.location && (
-                        <div className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                        <div className="text-xs text-ink-muted mt-1 flex items-center gap-1">
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -349,10 +341,10 @@ export default function HomePage() {
               })}
             </div>
           ) : (
-            <div className="text-center py-12 bg-gray-50 rounded-2xl">
-              <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-500">暂无今日计划</p>
-              <p className="text-gray-400 text-sm mt-1">请先在周计划页面创建计划</p>
+            <div className="text-center py-12 bg-surface rounded-card">
+              <AlertCircle className="w-12 h-12 text-ink-muted mx-auto mb-3" />
+              <p className="text-ink-subtle">暂无今日计划</p>
+              <p className="text-ink-muted text-sm mt-1">请先在周计划页面创建计划</p>
             </div>
           )}
         </div>
