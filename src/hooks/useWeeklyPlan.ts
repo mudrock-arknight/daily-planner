@@ -31,7 +31,7 @@ export function useWeeklyPlan(): UseWeeklyPlanReturn {
       const { data } = await supabase
         .from('weekly_plans')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('updated_at', { ascending: false });
 
       if (data && data.length > 0) {
         setAllPlans(data);
@@ -69,4 +69,114 @@ export function useWeeklyPlan(): UseWeeklyPlanReturn {
         setCompletions(completionRecords);
       }
     } catch (error) {
-      console.error('加载
+      console.error('加载打卡记录失败:', error);
+    }
+  }, []);
+
+  const goToPrevWeek = useCallback(() => {
+    setCurrentWeekIndex(prev => Math.min(prev + 1, allPlans.length - 1));
+  }, [allPlans.length]);
+
+  const goToNextWeek = useCallback(() => {
+    setCurrentWeekIndex(prev => Math.max(prev - 1, 0));
+  }, []);
+
+  const weeklyPlan = useMemo(() => {
+    return allPlans.length > 0 ? allPlans[currentWeekIndex] : null;
+  }, [allPlans, currentWeekIndex]);
+
+  const canGoPrev = currentWeekIndex < allPlans.length - 1;
+  const canGoNext = currentWeekIndex > 0;
+
+  const totalWeeks = allPlans.length;
+
+  const handleToggleCompletion = useCallback(async (dayName: string, index: number, block: TimeBlock) => {
+    if (completingIndex !== null) return;
+
+    setCompletingIndex(index);
+
+    const planDate = calcCorrectDate(weeklyPlan?.data?.startDate, dayName);
+
+    const existing = completions.find(c => c.planDate === planDate && c.timeblockIndex === index);
+    const isCompleted = !existing?.completed;
+
+    try {
+      const { data: checkinData } = await supabase
+        .from('daily_checkins')
+        .select('*')
+        .eq('date', planDate)
+        .limit(1);
+
+      let completionsArray: any[] = [];
+      if (checkinData && checkinData.length > 0) {
+        completionsArray = checkinData[0].data?.completions || [];
+      }
+
+      const existingIdx = completionsArray.findIndex(
+        (c: any) => c.timeblockIndex === index
+      );
+
+      const newCompletion = {
+        planDate,
+        timeblockIndex: index,
+        timeblockTime: block.time,
+        timeblockContent: block.content,
+        timeblockType: block.type,
+        completed: isCompleted,
+        completedAt: isCompleted ? new Date().toISOString() : null,
+      };
+
+      if (existingIdx >= 0) {
+        completionsArray[existingIdx] = newCompletion;
+      } else {
+        completionsArray.push(newCompletion);
+      }
+
+      if (checkinData && checkinData.length > 0) {
+        await supabase
+          .from('daily_checkins')
+          .update({ data: { ...checkinData[0].data, completions: completionsArray } })
+          .eq('date', planDate);
+      } else {
+        await supabase
+          .from('daily_checkins')
+          .insert({
+            date: planDate,
+            data: { completions: completionsArray }
+          });
+      }
+
+      if (isCompleted) {
+        setCompletions(prev => [...prev.filter(c => !(c.planDate === planDate && c.timeblockIndex === index)), newCompletion]);
+      } else {
+        setCompletions(prev => prev.filter(c => !(c.planDate === planDate && c.timeblockIndex === index)));
+      }
+    } catch (error) {
+      console.error('保存完成状态失败:', error);
+    } finally {
+      setCompletingIndex(null);
+    }
+  }, [completingIndex, weeklyPlan, completions]);
+
+  const isBlockCompleted = useCallback((planDate: string, index: number): boolean => {
+    const completion = completions.find(c => c.planDate === planDate && c.timeblockIndex === index);
+    return completion?.completed || false;
+  }, [completions]);
+
+  return {
+    weeklyPlan,
+    allPlans,
+    currentWeekIndex,
+    totalWeeks,
+    loading,
+    completingIndex,
+    handleToggleCompletion,
+    isBlockCompleted,
+    goToPrevWeek,
+    goToNextWeek,
+    canGoPrev,
+    canGoNext,
+    loadAllPlans,
+    loadCompletions,
+  };
+}
