@@ -74,59 +74,54 @@ export default function TodoPage() {
   const completionRate = todos.length > 0 ? Math.round((completeCount / todos.length) * 100) : 0
 
   return (
-    <div className="min-h-screen py-6 px-4 relative z-10">
-      <div className="bg-decorations">
-        <div className="bg-decoration-1"></div>
-        <div className="bg-decoration-2"></div>
-      </div>
-
+    <div className="min-h-screen py-6 px-4">
       <div className="max-w-2xl mx-auto">
-        <div className="text-center mb-8 animate-fadeIn">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl mb-4 shadow-2xl animate-float">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-primary-600 rounded-card mb-4 shadow-card">
             <ListTodo className="text-white" size={40} />
           </div>
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">待办事项</h1>
-          <p className="text-gray-600">管理你的日常任务</p>
+          <h1 className="text-4xl font-bold text-ink mb-2">待办事项</h1>
+          <p className="text-ink-subtle">管理你的日常任务</p>
         </div>
 
-        <div className="bg-white rounded-3xl p-6 shadow-xl mb-6 animate-fadeIn stagger-1">
+        <div className="card p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
               <div className="text-center">
-                <div className="text-3xl font-bold text-blue-600">{incompleteCount}</div>
-                <div className="text-sm text-gray-500">未完成</div>
+                <div className="text-3xl font-bold text-primary-600">{incompleteCount}</div>
+                <div className="text-sm text-ink-subtle">未完成</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-green-600">{completeCount}</div>
-                <div className="text-sm text-gray-500">已完成</div>
+                <div className="text-3xl font-bold text-success">{completeCount}</div>
+                <div className="text-sm text-ink-subtle">已完成</div>
               </div>
             </div>
             <div className="text-right">
-              <div className="text-3xl font-bold gradient-text">{completionRate}%</div>
-              <div className="text-sm text-gray-500">完成率</div>
+              <div className="text-3xl font-bold text-primary-600">{completionRate}%</div>
+              <div className="text-sm text-ink-subtle">完成率</div>
             </div>
           </div>
-          <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+          <div className="h-3 bg-surface-hover rounded-full overflow-hidden">
             <div 
-              className="h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full transition-all duration-1000 progress-bar"
+              className="h-full bg-primary-600 rounded-full transition-all duration-1000"
               style={{ width: `${completionRate}%` }}
             />
           </div>
         </div>
 
-        <form onSubmit={handleAddTodo} className="mb-8 animate-fadeIn stagger-2">
+        <form onSubmit={handleAddTodo} className="mb-8">
           <div className="flex gap-3">
             <input
               type="text"
               value={newTodo}
               onChange={(e) => setNewTodo(e.target.value)}
               placeholder="添加新任务..."
-              className="flex-1 px-5 py-4 rounded-2xl border border-gray-200 focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all text-base input-glow"
+              className="flex-1 px-5 py-4 rounded-btn border border-border focus:outline-none focus:shadow-focus focus:border-primary-600 transition-all text-base"
             />
             <button
               type="submit"
               disabled={!newTodo.trim()}
-              className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-4 rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 disabled:opacity-50 disabled:transform-none disabled:cursor-not-allowed btn-hover flex items-center gap-2"
+              className="btn-primary px-6 py-4 text-base font-semibold gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Plus size={22} />
               添加
@@ -136,40 +131,39 @@ export default function TodoPage() {
 
         <div className="space-y-4">
           {todos.length === 0 ? (
-            <div className="text-center py-20 bg-white/90 backdrop-blur rounded-3xl border-2 border-dashed border-gray-200 animate-fadeIn">
-              <div className="w-24 h-24 bg-gradient-to-br from-yellow-100 to-orange-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                <Star className="text-yellow-500" size={48} />
+            <div className="text-center py-20 bg-surface-card rounded-card shadow-card border-2 border-dashed border-border">
+              <div className="w-24 h-24 bg-warning/10 rounded-card flex items-center justify-center mx-auto mb-6">
+                <Star className="text-warning" size={48} />
               </div>
-              <p className="text-gray-700 text-xl font-semibold mb-2">还没有待办事项</p>
-              <p className="text-gray-400">添加你的第一个任务开始吧！</p>
+              <p className="text-ink text-xl font-semibold mb-2">还没有待办事项</p>
+              <p className="text-ink-muted">添加你的第一个任务开始吧！</p>
             </div>
           ) : (
-            todos.map((todo, idx) => (
+            todos.map((todo) => (
               <div
                 key={todo.id}
-                className={`bg-white rounded-3xl p-5 shadow-lg card-hover transition-all duration-300 flex items-center gap-4 ${
-                  todo.completed ? 'opacity-70 bg-gray-50' : ''
-                } animate-fadeIn`}
-                style={{ animationDelay: `${idx * 0.08}s` }}
+                className={`p-5 flex items-center gap-4 transition-all duration-200 ${
+                  todo.completed ? 'card opacity-70' : 'card-interactive'
+                }`}
               >
                 <button
                   onClick={() => toggleTodo(todo.id!, todo.completed)}
-                  className="flex-shrink-0 transition-all duration-300 icon-bounce"
+                  className="flex-shrink-0 transition-all duration-200"
                 >
                   {todo.completed ? (
-                    <CheckCircle2 className="text-green-500" size={32} />
+                    <CheckCircle2 className="text-success" size={32} />
                   ) : (
-                    <Circle className="text-gray-300 hover:text-blue-500" size={32} />
+                    <Circle className="text-ink-muted hover:text-primary-600" size={32} />
                   )}
                 </button>
                 <span className={`flex-1 text-lg ${
-                  todo.completed ? 'line-through text-gray-400' : 'text-gray-800'
+                  todo.completed ? 'line-through text-ink-muted' : 'text-ink'
                 }`}>
                   {todo.title}
                 </span>
                 <button
                   onClick={() => handleDeleteTodo(todo.id!)}
-                  className="text-gray-400 hover:text-red-500 transition-colors p-3 hover:bg-red-50 rounded-2xl icon-bounce"
+                  className="text-ink-muted hover:text-danger transition-colors p-3 hover:bg-surface-hover rounded-btn"
                 >
                   <Trash2 size={22} />
                 </button>

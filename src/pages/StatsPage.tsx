@@ -79,9 +79,7 @@ export default function StatsPage() {
         }
       }
 
-      // 收集所有学习类型且可统计的完成记录
       const allCompletions: CompletionRecord[] = []
-      // 收集所有学习时间块（用于长期目标统计）
       const studyBlocksWithContent: { content: string; planDate: string }[] = []
       
       if (checkinData && checkinData.length > 0) {
@@ -92,21 +90,16 @@ export default function StatsPage() {
           }
           if (checkin.data?.completions) {
             checkin.data.completions.forEach((comp: any) => {
-              // 只添加学习类型且可统计的时间块（或者如果无法判断countable，默认学习类型都统计）
-              // 从weekly plan中获取对应时间块的countable属性
               let isStudyAndCountable = comp.timeblockType === 'study'
               
-              // 如果有weekly plan，尝试从daily schedule中获取该时间块的详细信息
               if (planData && planData.length > 0 && planData[0].data?.dailySchedule) {
                 const dailySchedule = planData[0].data.dailySchedule
-                // 找到对应的日期和时间块
                 for (const dayName of Object.keys(dailySchedule)) {
                   const daySchedule = dailySchedule[dayName]
                   if (daySchedule.date === checkin.date && daySchedule.timeBlocks) {
                     const block = daySchedule.timeBlocks[comp.timeblockIndex]
                     if (block) {
                       isStudyAndCountable = block.type === 'study' && block.countable !== false
-                      // 收集学习内容用于长期目标统计
                       if (block.type === 'study' && comp.completed) {
                         studyBlocksWithContent.push({
                           content: block.content || comp.timeblockContent || '',
@@ -118,7 +111,6 @@ export default function StatsPage() {
                   }
                 }
               } else if (comp.timeblockType === 'study') {
-                // 如果没有weekly plan，默认学习类型都算
                 isStudyAndCountable = true
                 if (comp.completed && comp.timeblockContent) {
                   studyBlocksWithContent.push({
@@ -142,7 +134,6 @@ export default function StatsPage() {
         })
         setCompletions(allCompletions)
 
-        // 计算长期目标时间统计
         const goalsWithHours = calculateLongTermGoalHours(studyBlocksWithContent, planData?.[0]?.data?.longTermGoals || [])
         setLongTermGoals(goalsWithHours)
 
@@ -217,8 +208,7 @@ export default function StatsPage() {
 
   function calculateLongTermGoalHours(studyBlocks: { content: string; planDate: string }[], goals: any[]): LongTermGoal[] {
     return goals.map(goal => {
-      // 从目标文本中提取关键词（或者使用预设的keywords字段）
-      const keywords = goal.keywords || [goal.text.split(/[,，\s]+/)[0]] // 默认取第一个词作为关键词
+      const keywords = goal.keywords || [goal.text.split(/[,，\s]+/)[0]]
       
       let matchCount = 0
       studyBlocks.forEach(block => {
@@ -231,7 +221,6 @@ export default function StatsPage() {
         }
       })
       
-      // 假设每个学习时间块平均1小时（简化处理）
       const totalHours = matchCount * 1
       
       return {
@@ -294,73 +283,68 @@ export default function StatsPage() {
   }
 
   const typeColors: Record<string, string> = {
-    class: 'from-blue-500 to-indigo-500',
-    study: 'from-green-500 to-emerald-500',
-    exam: 'from-red-500 to-rose-500',
-    break: 'from-amber-500 to-orange-500',
-    task: 'from-violet-500 to-purple-500',
+    class: 'bg-primary-600',
+    study: 'bg-success',
+    exam: 'bg-danger',
+    break: 'bg-warning',
+    task: 'bg-primary-600',
   }
 
   return (
     <div className="min-h-screen py-6 px-4 relative z-10">
-      <div className="bg-decorations">
-        <div className="bg-decoration-1"></div>
-        <div className="bg-decoration-2"></div>
-      </div>
-      
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-12 h-12 bg-gradient-to-br from-pink-400 to-rose-500 rounded-2xl flex items-center justify-center shadow-lg">
+          <div className="w-12 h-12 bg-accent rounded-card flex items-center justify-center shadow-card">
             <BarChart3 className="text-white" size={24} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">学习统计</h1>
-            <p className="text-sm text-gray-500">追踪你的成长轨迹</p>
+            <h1 className="text-2xl font-bold text-ink">学习统计</h1>
+            <p className="text-sm text-ink-subtle">追踪你的成长轨迹</p>
           </div>
         </div>
 
         {loading ? (
           <div className="text-center py-12">
-            <div className="w-12 h-12 border-4 border-pink-200 border-t-pink-500 rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-gray-500">加载数据中...</p>
+            <div className="w-12 h-12 border-4 border-accent/20 border-t-accent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-ink-subtle">加载数据中...</p>
           </div>
         ) : (
           <>
             <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-5 shadow-sm border border-orange-100">
+              <div className="card p-5">
                 <div className="flex items-center gap-2 mb-2">
-                  <Flame className="text-orange-500" size={20} />
-                  <span className="text-sm text-gray-500">连续打卡</span>
+                  <Flame className="text-warning" size={20} />
+                  <span className="text-sm text-ink-subtle">连续打卡</span>
                 </div>
-                <div className="text-3xl font-bold text-orange-600">{streakDays} 天</div>
-                <div className="text-xs text-orange-400 mt-1">
+                <div className="text-3xl font-bold text-warning">{streakDays} 天</div>
+                <div className="text-xs text-ink-muted mt-1">
                   {streakDays >= 7 ? '太棒了！' : streakDays >= 3 ? '继续保持！' : '加油！'}
                 </div>
               </div>
-              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-5 shadow-sm border border-green-100">
+              <div className="card p-5">
                 <div className="flex items-center gap-2 mb-2">
-                  <Calendar className="text-green-500" size={20} />
-                  <span className="text-sm text-gray-500">累计打卡</span>
+                  <Calendar className="text-success" size={20} />
+                  <span className="text-sm text-ink-subtle">累计打卡</span>
                 </div>
-                <div className="text-3xl font-bold text-green-600">{totalCheckinDays} 天</div>
-                <div className="text-xs text-green-400 mt-1">继续坚持</div>
+                <div className="text-3xl font-bold text-success">{totalCheckinDays} 天</div>
+                <div className="text-xs text-ink-muted mt-1">继续坚持</div>
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-5 shadow-sm border border-green-100 mb-6">
+            <div className="card p-5 mb-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="text-green-500" size={20} />
-                  <span className="font-semibold text-gray-800">时间块完成率</span>
+                  <CheckCircle2 className="text-success" size={20} />
+                  <span className="font-semibold text-ink">时间块完成率</span>
                 </div>
-                <span className="text-xs bg-green-100 text-green-600 px-3 py-1 rounded-full font-medium">
+                <span className="text-xs bg-success/10 text-success px-3 py-1 rounded-full font-medium">
                   {weeklyCompletionRate}% 完成
                 </span>
               </div>
               
-              <div className="h-3 bg-white rounded-full overflow-hidden mb-4">
+              <div className="h-3 bg-surface-hover rounded-full overflow-hidden mb-4">
                 <div 
-                  className="h-full bg-gradient-to-r from-green-500 to-emerald-500 rounded-full transition-all duration-1000"
+                  className="h-full bg-success rounded-full transition-all duration-1000"
                   style={{ width: `${weeklyCompletionRate}%` }}
                 />
               </div>
@@ -370,18 +354,18 @@ export default function StatsPage() {
                   {Object.entries(typeCompletionRates).map(([type, stats]) => {
                     const rate = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0
                     return (
-                      <div key={type} className="bg-white/80 rounded-xl p-3">
+                      <div key={type} className="card p-3">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm text-gray-600">{typeLabels[type] || type}</span>
-                          <span className="text-sm font-medium text-gray-700">{rate}%</span>
+                          <span className="text-sm text-ink-subtle">{typeLabels[type] || type}</span>
+                          <span className="text-sm font-medium text-ink">{rate}%</span>
                         </div>
-                        <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="h-1.5 bg-surface-hover rounded-full overflow-hidden">
                           <div 
-                            className={`h-full bg-gradient-to-r ${typeColors[type] || 'from-gray-400 to-gray-500'} rounded-full`}
+                            className={`h-full ${typeColors[type] || 'bg-surface-hover'} rounded-full`}
                             style={{ width: `${rate}%` }}
                           />
                         </div>
-                        <div className="text-xs text-gray-400 mt-1">{stats.completed}/{stats.total}</div>
+                        <div className="text-xs text-ink-muted mt-1">{stats.completed}/{stats.total}</div>
                       </div>
                     )
                   })}
@@ -389,62 +373,62 @@ export default function StatsPage() {
               )}
             </div>
 
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-5 shadow-sm border border-blue-100 mb-6">
+            <div className="card p-5 mb-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <BookOpen className="text-blue-500" size={20} />
-                  <span className="font-semibold text-gray-800">英语学习总览</span>
+                  <BookOpen className="text-primary-600" size={20} />
+                  <span className="font-semibold text-ink">英语学习总览</span>
                 </div>
-                <span className="text-xs bg-blue-100 text-blue-600 px-3 py-1 rounded-full font-medium">
+                <span className="text-xs bg-primary-600/10 text-primary-600 px-3 py-1 rounded-full font-medium">
                   六级倒计时 {daysUntilCET6} 天
                 </span>
               </div>
               
               <div className="grid grid-cols-3 gap-4 mb-4">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">{totalStudyHours.toFixed(1)}h</div>
-                  <div className="text-xs text-gray-500">已学习</div>
+                  <div className="text-2xl font-bold text-primary-600">{totalStudyHours.toFixed(1)}h</div>
+                  <div className="text-xs text-ink-subtle">已学习</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-amber-600">{hoursRemaining.toFixed(1)}h</div>
-                  <div className="text-xs text-gray-500">剩余目标</div>
+                  <div className="text-2xl font-bold text-warning">{hoursRemaining.toFixed(1)}h</div>
+                  <div className="text-xs text-ink-subtle">剩余目标</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-600">{englishTarget}h</div>
-                  <div className="text-xs text-gray-500">目标时长</div>
+                  <div className="text-2xl font-bold text-ink">{englishTarget}h</div>
+                  <div className="text-xs text-ink-subtle">目标时长</div>
                 </div>
               </div>
               
-              <div className="h-3 bg-white rounded-full overflow-hidden">
+              <div className="h-3 bg-surface-hover rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-1000"
+                  className="h-full bg-primary-600 rounded-full transition-all duration-1000"
                   style={{ width: `${englishProgress}%` }}
                 />
               </div>
-              <div className="text-right text-sm text-blue-600 mt-2 font-medium">{englishProgress}% 完成</div>
+              <div className="text-right text-sm text-primary-600 mt-2 font-medium">{englishProgress}% 完成</div>
             </div>
 
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 mb-6">
+            <div className="card p-5 mb-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="text-purple-500" size={20} />
-                  <h3 className="font-semibold text-gray-800">学习趋势</h3>
+                  <TrendingUp className="text-primary-600" size={20} />
+                  <h3 className="font-semibold text-ink">学习趋势</h3>
                 </div>
                 <div className={`flex items-center gap-1 text-sm font-medium ${
-                  trendChange >= 0 ? 'text-green-600' : 'text-red-600'
+                  trendChange >= 0 ? 'text-success' : 'text-danger'
                 }`}>
                   {trendChange >= 0 ? '↑' : '↓'} {Math.abs(trendChange)}%
                 </div>
               </div>
               
               <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="bg-gray-50 rounded-xl p-3 text-center">
-                  <div className="text-lg font-bold text-gray-600">{lastWeekHours.toFixed(1)}h</div>
-                  <div className="text-xs text-gray-400">上周</div>
+                <div className="bg-surface-hover rounded-btn p-3 text-center">
+                  <div className="text-lg font-bold text-ink">{lastWeekHours.toFixed(1)}h</div>
+                  <div className="text-xs text-ink-muted">上周</div>
                 </div>
-                <div className="bg-blue-50 rounded-xl p-3 text-center">
-                  <div className="text-lg font-bold text-blue-600">{thisWeekHours.toFixed(1)}h</div>
-                  <div className="text-xs text-blue-400">本周</div>
+                <div className="bg-surface-hover rounded-btn p-3 text-center">
+                  <div className="text-lg font-bold text-primary-600">{thisWeekHours.toFixed(1)}h</div>
+                  <div className="text-xs text-ink-muted">本周</div>
                 </div>
               </div>
               
@@ -461,26 +445,26 @@ export default function StatsPage() {
                         <div 
                           className={`w-full rounded-t-lg transition-all ${
                             isToday 
-                              ? 'bg-gradient-to-t from-blue-500 to-cyan-400' 
-                              : 'bg-gradient-to-t from-gray-300 to-gray-400'
+                              ? 'bg-primary-600' 
+                              : 'bg-surface-hover'
                           }`}
                           style={{ height: `${Math.max(height, 5)}%` }}
                         />
                       </div>
-                      <span className={`text-xs ${isToday ? 'font-bold text-blue-600' : 'text-gray-500'}`}>
+                      <span className={`text-xs ${isToday ? 'font-bold text-primary-600' : 'text-ink-subtle'}`}>
                         周{dayName}
                       </span>
-                      <span className="text-xs text-gray-400">{day.studyHours}h</span>
+                      <span className="text-xs text-ink-muted">{day.studyHours}h</span>
                     </div>
                   )
                 })}
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 mb-6">
+            <div className="card p-5 mb-6">
               <div className="flex items-center gap-2 mb-4">
-                <PieChart className="text-pink-500" size={20} />
-                <h3 className="font-semibold text-gray-800">每日完成率</h3>
+                <PieChart className="text-accent" size={20} />
+                <h3 className="font-semibold text-ink">每日完成率</h3>
               </div>
               
               <div className="space-y-3">
@@ -492,23 +476,23 @@ export default function StatsPage() {
                   
                   return (
                     <div key={i} className="flex items-center gap-3">
-                      <span className="text-sm text-gray-500 w-16">{dayLabel} {dayName}</span>
-                      <div className="flex-1 h-4 bg-gray-100 rounded-full overflow-hidden">
+                      <span className="text-sm text-ink-subtle w-16">{dayLabel} {dayName}</span>
+                      <div className="flex-1 h-4 bg-surface-hover rounded-full overflow-hidden">
                         <div 
                           className={`h-full rounded-full transition-all ${
                             isToday 
-                              ? 'bg-gradient-to-r from-pink-500 to-rose-500' 
+                              ? 'bg-accent' 
                               : day.rate >= 80 
-                              ? 'bg-gradient-to-r from-green-400 to-emerald-500'
+                              ? 'bg-success'
                               : day.rate >= 50
-                              ? 'bg-gradient-to-r from-amber-400 to-orange-500'
-                              : 'bg-gradient-to-r from-gray-300 to-gray-400'
+                              ? 'bg-warning'
+                              : 'bg-surface-hover'
                           }`}
                           style={{ width: `${day.rate}%` }}
                         />
                       </div>
                       <span className={`text-sm font-medium w-12 text-right ${
-                        isToday ? 'text-pink-600' : 'text-gray-600'
+                        isToday ? 'text-accent' : 'text-ink-subtle'
                       }`}>
                         {day.rate}%
                       </span>
@@ -519,37 +503,37 @@ export default function StatsPage() {
             </div>
 
         {goals.length > 0 && (
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 mb-6">
+          <div className="card p-5 mb-6">
             <div className="flex items-center gap-2 mb-4">
-              <Target className="text-rose-500" size={20} />
-              <h3 className="font-semibold text-gray-800">目标进度</h3>
+              <Target className="text-accent" size={20} />
+              <h3 className="font-semibold text-ink">目标进度</h3>
             </div>
             <div className="space-y-4">
               {goals.slice(0, 5).map((goal, i) => (
                 <div key={i}>
                   <div className="flex justify-between text-sm mb-1.5">
-                    <span className="text-gray-600 flex items-center gap-2">
-                      {goal.type === 'exam' && <span className="w-2 h-2 bg-red-400 rounded-full"></span>}
-                      {goal.type === 'study' && <span className="w-2 h-2 bg-green-400 rounded-full"></span>}
+                    <span className="text-ink-subtle flex items-center gap-2">
+                      {goal.type === 'exam' && <span className="w-2 h-2 bg-danger rounded-full"></span>}
+                      {goal.type === 'study' && <span className="w-2 h-2 bg-success rounded-full"></span>}
                       {goal.text}
                     </span>
                     <span className={`font-medium ${
-                      goal.type === 'exam' ? 'text-red-600' :
-                      goal.type === 'study' ? 'text-green-600' : 'text-blue-600'
+                      goal.type === 'exam' ? 'text-danger' :
+                      goal.type === 'study' ? 'text-success' : 'text-primary-600'
                     }`}>{goal.progress}%</span>
                   </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-2 bg-surface-hover rounded-full overflow-hidden">
                     <div 
                       className={`h-full rounded-full transition-all ${
-                        goal.type === 'exam' ? 'bg-gradient-to-r from-red-400 to-rose-500' :
-                        goal.type === 'study' ? 'bg-gradient-to-r from-green-400 to-emerald-500' :
-                        'bg-gradient-to-r from-blue-400 to-indigo-500'
+                        goal.type === 'exam' ? 'bg-danger' :
+                        goal.type === 'study' ? 'bg-success' :
+                        'bg-primary-600'
                       }`}
                       style={{ width: `${goal.progress}%` }}
                     />
                   </div>
                   {goal.deadline && (
-                    <div className="text-xs text-gray-400 mt-1">截止: {goal.deadline}</div>
+                    <div className="text-xs text-ink-muted mt-1">截止: {goal.deadline}</div>
                   )}
                 </div>
               ))}
@@ -558,33 +542,26 @@ export default function StatsPage() {
         )}
 
         {longTermGoals.length > 0 && (
-          <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-5 shadow-sm border border-indigo-100 mb-6">
+          <div className="card p-5 mb-6">
             <div className="flex items-center gap-2 mb-4">
-              <Sparkles className="text-indigo-600" size={20} />
-              <h3 className="font-semibold text-gray-800">长期目标时间统计</h3>
+              <Sparkles className="text-primary-600" size={20} />
+              <h3 className="font-semibold text-ink">长期目标时间统计</h3>
             </div>
             <div className="space-y-3">
               {longTermGoals.map((goal) => {
                 const categoryColors: Record<string, string> = {
-                  language: 'from-blue-400 to-indigo-500',
-                  tech: 'from-green-400 to-emerald-500',
-                  finance: 'from-amber-400 to-orange-500',
-                  skill: 'from-purple-400 to-pink-500',
-                  hobby: 'from-rose-400 to-red-500'
-                }
-                const categoryBg: Record<string, string> = {
-                  language: 'bg-blue-50',
-                  tech: 'bg-green-50',
-                  finance: 'bg-amber-50',
-                  skill: 'bg-purple-50',
-                  hobby: 'bg-rose-50'
+                  language: 'bg-primary-600',
+                  tech: 'bg-success',
+                  finance: 'bg-warning',
+                  skill: 'bg-accent',
+                  hobby: 'bg-danger'
                 }
                 const categoryText: Record<string, string> = {
-                  language: 'text-blue-600',
-                  tech: 'text-green-600',
-                  finance: 'text-amber-600',
-                  skill: 'text-purple-600',
-                  hobby: 'text-rose-600'
+                  language: 'text-primary-600',
+                  tech: 'text-success',
+                  finance: 'text-warning',
+                  skill: 'text-accent',
+                  hobby: 'text-danger'
                 }
                 const categoryNames: Record<string, string> = {
                   language: '语言',
@@ -597,31 +574,31 @@ export default function StatsPage() {
                 return (
                   <div 
                     key={goal.id} 
-                    className={`p-4 rounded-xl ${categoryBg[goal.category] || 'bg-gray-50'} border border-transparent transition-all duration-300`}
+                    className="card p-4"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <span className={`w-2 h-8 rounded-full bg-gradient-to-b ${categoryColors[goal.category] || 'bg-gray-400'}`}></span>
-                        <span className="font-medium text-gray-700">{goal.text}</span>
+                        <span className={`w-2 h-8 rounded-full ${categoryColors[goal.category] || 'bg-surface-hover'}`}></span>
+                        <span className="font-medium text-ink">{goal.text}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className={`text-xs px-2 py-1 rounded-full ${categoryBg[goal.category] || 'bg-gray-100'} ${categoryText[goal.category] || 'text-gray-600'}`}>
+                        <span className={`text-xs px-2 py-1 rounded-full bg-surface-hover ${categoryText[goal.category] || 'text-ink-subtle'}`}>
                           {categoryNames[goal.category] || '其他'}
                         </span>
                         <div className="text-right">
-                          <div className="text-lg font-bold text-gray-800">{goal.totalHours?.toFixed(1) || 0}h</div>
-                          <div className="text-xs text-gray-500">已投入</div>
+                          <div className="text-lg font-bold text-ink">{goal.totalHours?.toFixed(1) || 0}h</div>
+                          <div className="text-xs text-ink-subtle">已投入</div>
                         </div>
                       </div>
                     </div>
                     <div className="mt-2">
-                      <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                      <div className="flex items-center justify-between text-xs text-ink-muted mb-1">
                         <span>进度</span>
                         <span>{goal.progress}%</span>
                       </div>
-                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div className="h-2 bg-surface-hover rounded-full overflow-hidden">
                         <div 
-                          className={`h-full rounded-full bg-gradient-to-r ${categoryColors[goal.category] || 'bg-gray-400'}`}
+                          className={`h-full rounded-full ${categoryColors[goal.category] || 'bg-surface-hover'}`}
                           style={{ width: `${goal.progress}%` }}
                         />
                       </div>
@@ -634,14 +611,14 @@ export default function StatsPage() {
         )}
 
         {totalCheckinDays === 0 && completions.length === 0 && (
-          <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl p-6 border border-yellow-200">
+          <div className="card p-6">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-yellow-100 rounded-2xl flex items-center justify-center">
-                <AlertCircle className="text-yellow-600" size={28} />
+              <div className="w-14 h-14 bg-warning/10 rounded-card flex items-center justify-center">
+                <AlertCircle className="text-warning" size={28} />
               </div>
               <div>
-                <p className="text-yellow-800 font-semibold text-lg">开始你的学习记录</p>
-                <p className="text-sm text-yellow-600 mt-1">去打卡页面记录每天的学习，让数据告诉你进步了多少！</p>
+                <p className="text-ink font-semibold text-lg">开始你的学习记录</p>
+                <p className="text-sm text-ink-subtle mt-1">去打卡页面记录每天的学习，让数据告诉你进步了多少！</p>
               </div>
             </div>
           </div>

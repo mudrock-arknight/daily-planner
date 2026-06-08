@@ -117,18 +117,18 @@ export default function SchedulePage() {
   return (
     <div className="p-4 max-w-6xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
-        <Calendar className="text-blue-600" size={28} />
-        <h1 className="text-2xl font-bold text-gray-800">第13周课程表</h1>
+        <Calendar className="text-primary-600" size={28} />
+        <h1 className="text-2xl font-bold text-ink">第13周课程表</h1>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-gray-50">
-                <th className="p-3 text-sm font-medium text-gray-600 border-b">时间</th>
+              <tr className="bg-surface-hover">
+                <th className="p-3 text-sm font-medium text-ink-subtle border-b border-border">时间</th>
                 {weekDays.map((day) => (
-                  <th key={day} className="p-3 text-sm font-medium text-gray-600 border-b min-w-36">
+                  <th key={day} className="p-3 text-sm font-medium text-ink-subtle border-b border-border min-w-36">
                     {day}
                   </th>
                 ))}
@@ -136,8 +136,8 @@ export default function SchedulePage() {
             </thead>
             <tbody>
               {periods.map((period, pIdx) => (
-                <tr key={period.label} className="border-b border-gray-100">
-                  <td className="p-3 text-sm text-gray-500 border-r">
+                <tr key={period.label} className="border-b border-border">
+                  <td className="p-3 text-sm text-ink-subtle border-r border-border">
                     <div className="font-medium">{period.label}</div>
                     <div className="text-xs">{period.time}</div>
                   </td>
@@ -145,7 +145,7 @@ export default function SchedulePage() {
                     const course = scheduleData[pIdx][dIdx]
                     const colorClass = course ? (courseColors[course.name] || defaultColor) : ''
                     return (
-                      <td key={`${pIdx}-${dIdx}`} className="p-1 border-r">
+                      <td key={`${pIdx}-${dIdx}`} className="p-1 border-r border-border">
                         {course && (
                           <div className={`p-2 rounded border ${colorClass}`}>
                             <div className="text-xs font-medium">{course.name}</div>
@@ -163,8 +163,8 @@ export default function SchedulePage() {
         </div>
       </div>
 
-      <div className="mt-6 bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
-        <h3 className="font-medium text-gray-700 mb-3">课程列表</h3>
+      <div className="mt-6 card p-4">
+        <h3 className="font-medium text-ink mb-3">课程列表</h3>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
           {Object.entries(courseColors).map(([name, color]) => (
             <div key={name} className={`p-2 rounded border text-xs ${color}`}>

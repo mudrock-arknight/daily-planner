@@ -41,9 +41,9 @@ export function ToastContainer() {
         <div
           key={toast.id}
           className={`
-            px-6 py-3 rounded-2xl shadow-xl text-white font-medium text-base
+            px-6 py-3 rounded-card shadow-card text-white font-medium text-base
             animate-toast-slide-in pointer-events-auto
-            ${toast.type === 'success' ? 'bg-gradient-to-r from-green-500 to-emerald-500' : 'bg-gradient-to-r from-red-500 to-pink-500'}
+            ${toast.type === 'success' ? 'bg-success' : 'bg-danger'}
           `}
         >
           <span className="mr-2">{toast.type === 'success' ? '✓' : '✕'}</span>

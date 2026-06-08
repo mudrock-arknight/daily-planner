@@ -1,3 +1,225 @@
+# 周计划翻页功能 Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** 在计划页添加左右箭头翻页，允许用户查看当前周、过去周和未来周的计划。
+
+**Architecture:** 修改 `useWeeklyPlan` hook 改为加载所有周计划（而非仅最新1条），新增 `currentWeekIndex` 状态控制当前查看哪一周。在 `WeeklyPlanPage` 顶部添加左右箭头 + 周次标签的导航栏。
+
+**Tech Stack:** React 18 + TypeScript + Zustand + Supabase
+
+---
+
+### Task 1: 修改 useWeeklyPlan Hook 支持多周计划
+
+**Files:**
+- Modify: `e:\szx\大学生活\daily\src\hooks\useWeeklyPlan.ts`
+
+**改动说明**：将 hook 从只加载最新1条改为加载全部计划，按 `startDate` 排序，新增 `currentWeekIndex` 和导航方法。
+
+- [x] **Step 1: 重写 useWeeklyPlan hook**
+
+把 `e:\szx\大学生活\daily\src\hooks\useWeeklyPlan.ts` 改为以下内容：
+
+```typescript
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { supabase } from '../lib/supabase';
+import { calcCorrectDate, CompletionRecord, TimeBlock } from '../utils/planUtils';
+
+export interface UseWeeklyPlanReturn {
+  weeklyPlan: any;
+  allPlans: any[];
+  currentWeekIndex: number;
+  totalWeeks: number;
+  loading: boolean;
+  completingIndex: number | null;
+  handleToggleCompletion: (dayName: string, index: number, block: TimeBlock) => Promise<void>;
+  isBlockCompleted: (planDate: string, index: number) => boolean;
+  goToPrevWeek: () => void;
+  goToNextWeek: () => void;
+  canGoPrev: boolean;
+  canGoNext: boolean;
+  loadAllPlans: () => Promise<void>;
+  loadCompletions: () => Promise<void>;
+}
+
+export function useWeeklyPlan(): UseWeeklyPlanReturn {
+  const [allPlans, setAllPlans] = useState<any[]>([]);
+  const [currentWeekIndex, setCurrentWeekIndex] = useState<number>(0);
+  const [completions, setCompletions] = useState<CompletionRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [completingIndex, setCompletingIndex] = useState<number | null>(null);
+
+  const loadAllPlans = useCallback(async () => {
+    try {
+      const { data } = await supabase
+        .from('weekly_plans')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (data && data.length > 0) {
+        setAllPlans(data);
+        // 默认显示最新一周（index 0，因为按 created_at 降序排列）
+        setCurrentWeekIndex(0);
+      }
+    } catch (error) {
+      console.error('加载周计划失败:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const loadCompletions = useCallback(async () => {
+    try {
+      const { data } = await supabase
+        .from('daily_checkins')
+        .select('*')
+        .order('date', { ascending: false })
+        .limit(90); // 增加limit以覆盖更多周的打卡记录
+
+      if (data && data.length > 0) {
+        const completionRecords: CompletionRecord[] = [];
+        data.forEach((checkin: any) => {
+          if (checkin.data?.completions) {
+            checkin.data.completions.forEach((comp: CompletionRecord) => {
+              completionRecords.push({
+                planDate: checkin.date,
+                timeblockIndex: comp.timeblockIndex,
+                completed: comp.completed,
+                completedAt: comp.completedAt,
+              });
+            });
+          }
+        });
+        setCompletions(completionRecords);
+      }
+    } catch (error) {
+      console.error('加载打卡记录失败:', error);
+    }
+  }, []);
+
+  const goToPrevWeek = useCallback(() => {
+    setCurrentWeekIndex(prev => Math.min(prev + 1, allPlans.length - 1));
+  }, [allPlans.length]);
+
+  const goToNextWeek = useCallback(() => {
+    setCurrentWeekIndex(prev => Math.max(prev - 1, 0));
+  }, []);
+
+  // 当前查看的周计划
+  const weeklyPlan = useMemo(() => {
+    return allPlans.length > 0 ? allPlans[currentWeekIndex] : null;
+  }, [allPlans, currentWeekIndex]);
+
+  const canGoPrev = currentWeekIndex < allPlans.length - 1;
+  const canGoNext = currentWeekIndex > 0;
+
+  const totalWeeks = allPlans.length;
+
+  const handleToggleCompletion = useCallback(async (dayName: string, index: number, block: TimeBlock) => {
+    if (completingIndex !== null) return;
+
+    setCompletingIndex(index);
+
+    const planDate = calcCorrectDate(weeklyPlan?.data?.startDate, dayName);
+
+    const existing = completions.find(c => c.planDate === planDate && c.timeblockIndex === index);
+    const isCompleted = !existing?.completed;
+
+    try {
+      const { data: checkinData } = await supabase
+        .from('daily_checkins')
+        .select('*')
+        .eq('date', planDate)
+        .limit(1);
+
+      let completionsArray: any[] = [];
+      if (checkinData && checkinData.length > 0) {
+        completionsArray = checkinData[0].data?.completions || [];
+      }
+
+      const existingIndex = completionsArray.findIndex(
+        (c: any) => c.timeblockIndex === index
+      );
+
+      const newCompletion = {
+        planDate,
+        timeblockIndex: index,
+        timeblockTime: block.time,
+        timeblockContent: block.content,
+        timeblockType: block.type,
+        completed: isCompleted,
+        completedAt: isCompleted ? new Date().toISOString() : null,
+      };
+
+      if (existingIndex >= 0) {
+        completionsArray[existingIndex] = newCompletion;
+      } else {
+        completionsArray.push(newCompletion);
+      }
+
+      if (checkinData && checkinData.length > 0) {
+        await supabase
+          .from('daily_checkins')
+          .update({ data: { ...checkinData[0].data, completions: completionsArray } })
+          .eq('date', planDate);
+      } else {
+        await supabase
+          .from('daily_checkins')
+          .insert({
+            date: planDate,
+            data: { completions: completionsArray }
+          });
+      }
+
+      if (isCompleted) {
+        setCompletions([...completions.filter(c => !(c.planDate === planDate && c.timeblockIndex === index)), newCompletion]);
+      } else {
+        setCompletions(completions.filter(c => !(c.planDate === planDate && c.timeblockIndex === index)));
+      }
+    } catch (error) {
+      console.error('保存完成状态失败:', error);
+    } finally {
+      setCompletingIndex(null);
+    }
+  }, [completingIndex, weeklyPlan, completions]);
+
+  const isBlockCompleted = useCallback((planDate: string, index: number): boolean => {
+    const completion = completions.find(c => c.planDate === planDate && c.timeblockIndex === index);
+    return completion?.completed || false;
+  }, [completions]);
+
+  return {
+    weeklyPlan,
+    allPlans,
+    currentWeekIndex,
+    totalWeeks,
+    loading,
+    completingIndex,
+    handleToggleCompletion,
+    isBlockCompleted,
+    goToPrevWeek,
+    goToNextWeek,
+    canGoPrev,
+    canGoNext,
+    loadAllPlans,
+    loadCompletions,
+  };
+}
+```
+
+### Task 2: 修改 WeeklyPlanPage 添加翻页导航
+
+**Files:**
+- Modify: `e:\szx\大学生活\daily\src\pages\WeeklyPlanPage.tsx`
+
+- [x] **Step 1: 顶部添加翻页箭头**
+
+在 `WeeklyPlanPage.tsx` 的 header card 区域，在"第 {weeklyPlan.week} 周"行上方添加左右箭头导航栏。
+
+把 `e:\szx\大学生活\daily\src\pages\WeeklyPlanPage.tsx` 改为以下内容：
+
+```typescript
 import { useState, useEffect } from 'react'
 import { Calendar, Target, CheckCircle2, Circle, Loader2, Sparkles, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useWeeklyPlan } from '../hooks/useWeeklyPlan'
@@ -24,6 +246,7 @@ export default function WeeklyPlanPage() {
 
   const { today, todayName } = getTodayInfo()
 
+  // 当 weeklyPlan 首次加载时，设置默认选中的日期
   useEffect(() => {
     if (weeklyPlan?.data?.dailySchedule) {
       const days = Object.keys(weeklyPlan.data.dailySchedule)
@@ -317,3 +540,75 @@ export default function WeeklyPlanPage() {
     </div>
   )
 }
+```
+
+### Task 3: 同步修改 HomePage（确保兼容新 hook 接口）
+
+**Files:**
+- Modify: `e:\szx\大学生活\daily\src\pages\HomePage.tsx`
+
+**说明**：HomePage 也使用 `useWeeklyPlan` hook，需要更新调用方式以兼容新接口。
+
+- [ ] **Step 1: 更新 HomePage 中的 hook 调用**
+
+HomePage 需要将 `loadWeeklyPlan` 改为 `loadAllPlans`，因为 `useWeeklyPlan` 不再导出 `loadWeeklyPlan`。
+
+把 `e:\szx\大学生活\daily\src\pages\HomePage.tsx` 中以下位置：
+
+```typescript
+// 旧代码（第4行附近）
+import { useWeeklyPlan } from '../hooks/useWeeklyPlan';
+
+// 旧代码 - useEffect 中使用 loadWeeklyPlan 的地方
+useEffect(() => {
+    Promise.all([loadWeeklyPlan(), loadCompletions()]);
+}, [loadWeeklyPlan, loadCompletions]);
+```
+
+改为：
+
+```typescript
+// 新代码
+import { useWeeklyPlan } from '../hooks/useWeeklyPlan';
+
+// 以及解构时改为 loadAllPlans
+const {
+    weeklyPlan,
+    loading,
+    completingIndex,
+    handleToggleCompletion,
+    isBlockCompleted,
+    loadAllPlans,
+    loadCompletions,
+} = useWeeklyPlan();
+
+// useEffect 改为
+useEffect(() => {
+    Promise.all([loadAllPlans(), loadCompletions()]);
+}, [loadAllPlans, loadCompletions]);
+```
+
+### Task 4: 验证构建
+
+- [ ] **Step 1: 运行构建**
+
+```bash
+npm run build
+```
+
+Expected: 无错误，构建成功。
+
+- [ ] **Step 2: 提交**
+
+```bash
+git add src/hooks/useWeeklyPlan.ts src/pages/WeeklyPlanPage.tsx src/pages/HomePage.tsx
+git commit -m "feat: 周计划页面支持左右箭头翻页查看不同周"
+```
+
+---
+
+## Self-Review
+
+1. **Spec coverage**: 所有需求已覆盖 - 左右箭头翻页、查看过去周、查看未来周、仅查看不创建
+2. **Placeholder scan**: 无 TBD/TODO/占位符
+3. **Type consistency**: `loadAllPlans` 替代 `loadWeeklyPlan`，接口一致，HomePage 同步更新
